@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Monitor v4.0</title>
+    <title>Executive Health Analytics v4.5</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,49 +15,41 @@
 </head>
 <body class="text-slate-200 min-h-screen p-4 md:p-8">
     <div class="max-w-2xl mx-auto">
-        <!-- Header & Executive Summary -->
+        <!-- Header -->
         <header class="mb-8 flex justify-between items-start border-b border-slate-700 pb-6">
             <div>
-                <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">System <span class="text-blue-500">Integrity</span></h1>
+                <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">Health <span class="text-blue-500">Intelligence</span></h1>
                 <p id="system-date" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1"></p>
             </div>
-            <div class="text-right">
-                <div id="status-cloud" class="inline-block w-2 h-2 rounded-full bg-red-600 mb-1"></div>
-                <p class="text-[9px] text-slate-500 font-bold uppercase">Cloud Sync</p>
-            </div>
+            <div id="status-cloud" class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
         </header>
 
-        <!-- Financial & Health Dashboard -->
-        <div class="grid grid-cols-2 gap-4 mb-10">
-            <div class="stat-card p-4 rounded-xl shadow-inner">
+        <!-- Intelligence Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            <div class="stat-card p-4 rounded-xl">
                 <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Risparmio Settimanale</p>
-                <p id="saving-value" class="text-2xl font-bold text-white">€ 0.00</p>
-                <div class="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                    <div id="saving-bar" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
-                </div>
+                <p id="saving-week" class="text-xl font-bold text-white">€ 0.00</p>
             </div>
-            <div class="stat-card p-4 rounded-xl shadow-inner">
-                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Status Rigenerazione</p>
-                <p id="health-milestone" class="text-[11px] font-medium text-slate-300 leading-tight">In attesa di dati...</p>
+            <div class="stat-card p-4 rounded-xl border-l-2 border-blue-500">
+                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Proiezione Annua</p>
+                <p id="saving-year" class="text-xl font-bold text-white">€ 0.00</p>
+            </div>
+            <div class="stat-card p-4 rounded-xl">
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Status Biologico</p>
+                <p id="health-milestone" class="text-[10px] font-medium text-slate-300 leading-tight italic">Analisi in corso...</p>
             </div>
         </div>
 
         <!-- Inserimento Rapido -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <section class="glass-card p-6 rounded-2xl shadow-2xl hover:border-rose-500/30 transition-colors">
-                <button id="btn-sigaretta" class="w-full bg-gradient-to-br from-rose-700 to-rose-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs">
-                    Log Sigaretta
-                </button>
-            </section>
-            <section class="glass-card p-6 rounded-2xl shadow-2xl hover:border-blue-500/30 transition-colors">
-                <select id="select-alcolico" class="w-full mb-3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs outline-none text-slate-300"></select>
-                <button id="btn-alcolico" class="w-full bg-gradient-to-br from-blue-700 to-blue-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs">
-                    Log Alcolico
-                </button>
-            </section>
+            <button id="btn-sigaretta" class="bg-gradient-to-br from-rose-700 to-rose-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs border border-rose-500/30">Log Sigaretta</button>
+            <div class="flex flex-col gap-2">
+                <select id="select-alcolico" class="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs outline-none text-slate-300"></select>
+                <button id="btn-alcolico" class="bg-gradient-to-br from-blue-700 to-blue-900 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-[10px] border border-blue-500/30">Log Alcolico</button>
+            </div>
         </div>
 
-        <!-- Tab Navigation & List -->
+        <!-- Log & Analytics -->
         <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
             <nav class="flex bg-slate-800/40 p-1">
                 <button onclick="switchView('live')" id="tab-live" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
@@ -74,7 +66,7 @@
         const CONFIG = {
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
-            BASELINE_SPESA: 124.50 // Euro settimanali
+            BASELINE_SPESA: 124.50 // Baseline settimanale fissa
         };
 
         const BEVANDE = [
@@ -93,35 +85,29 @@
         let rawData = [];
         let currentView = 'live';
 
-        // Health Benchmarks Logic
         function getHealthInsight(ms) {
             const mins = ms / 60000;
-            if (mins < 20) return "Fase di assunzione attiva. Monitoraggio battito cardiaco.";
-            if (mins < 720) return "Pressione arteriosa in stabilizzazione. CO in calo.";
-            if (mins < 2880) return "Livelli di ossigeno normalizzati. Rigenerazione nervosa.";
-            return "Capacità polmonare in aumento. Detossificazione avanzata.";
+            if (mins < 20) return "Normalizzazione battito cardiaco in corso.";
+            if (mins < 720) return "Livelli di CO nel sangue tornano alla normalità.";
+            if (mins < 2880) return "Rigenerazione terminazioni nervose (Gusto/Olfatto).";
+            return "Capacità polmonare e circolazione in netto miglioramento.";
         }
 
         async function connect() {
             sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
-            document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
             await refresh();
         }
 
         async function refresh() {
-            const loader = document.getElementById('loader');
-            loader.classList.remove('hidden');
             const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(300);
             if (!error) {
                 rawData = data;
-                updateStats();
+                updateAnalytics();
                 render();
             }
-            loader.classList.add('hidden');
         }
 
-        function updateStats() {
-            // Calcolo risparmio settimanale (Lunedì - Oggi)
+        function updateAnalytics() {
             const ora = new Date();
             const inizioSettimana = new Date(ora.setDate(ora.getDate() - ora.getDay() + 1)).setHours(0,0,0,0);
             
@@ -134,11 +120,10 @@
                 }
             });
 
-            const risparmio = Math.max(0, CONFIG.BASELINE_SPESA - spesaSettimanale);
-            document.getElementById('saving-value').innerText = `€ ${risparmio.toFixed(2)}`;
-            document.getElementById('saving-bar').style.width = `${Math.min(100, (risparmio / CONFIG.BASELINE_SPESA) * 100)}%`;
+            const risparmioSett = Math.max(0, CONFIG.BASELINE_SPESA - spesaSettimanale);
+            document.getElementById('saving-week').innerText = `€ ${risparmioSett.toFixed(2)}`;
+            document.getElementById('saving-year').innerText = `€ ${(risparmioSett * 52.14).toFixed(2)}`;
 
-            // Update Health Milestone basato sull'ultimo record
             if (rawData.length > 0) {
                 const diff = Date.now() - new Date(rawData[0].created_at).getTime();
                 document.getElementById('health-milestone').innerText = getHealthInsight(diff);
@@ -153,18 +138,10 @@
                     const dt = new Date(i.created_at);
                     const li = document.createElement('li');
                     li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
-                    li.innerHTML = `
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')} — ${dt.toLocaleDateString('it-IT')}</p>
-                            <p class="text-sm font-bold text-white uppercase">${i.nome}</p>
-                            <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
-                        </div>
-                        <button onclick="del('${i.id}')" class="text-rose-500/50 hover:text-rose-500 text-[9px] font-bold uppercase tracking-widest p-2">Rimuovi</button>
-                    `;
+                    li.innerHTML = `<div><p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')}</p><p class="text-sm font-bold text-white uppercase">${i.nome}</p></div><button onclick="del('${i.id}')" class="text-rose-500/50 text-[9px] font-bold uppercase tracking-widest p-2">Elimina</button>`;
                     list.appendChild(li);
                 });
             } else {
-                // Semplice aggregazione giornaliera
                 const g = {};
                 rawData.forEach(i => {
                     const key = new Date(i.created_at).toLocaleDateString('it-IT');
@@ -174,14 +151,13 @@
                 Object.keys(g).forEach(k => {
                     const li = document.createElement('li');
                     li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
-                    li.innerHTML = `<p class="text-[10px] font-black text-blue-400 uppercase mb-2">${k}</p>
-                                    <p class="text-sm text-white font-bold">🚬 ${g[k].s} Unità | 🍷 ${g[k].a} Consumazioni</p>`;
+                    li.innerHTML = `<p class="text-[10px] font-black text-blue-400 uppercase mb-2">${k}</p><p class="text-sm text-white font-bold">🚬 ${g[k].s} Unità | 🍷 ${g[k].a} Consumazioni</p>`;
                     list.appendChild(li);
                 });
             }
         }
 
-        window.del = async (id) => { if(confirm("Conferma rimozione record?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
+        window.del = async (id) => { if(confirm("Conferma?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
         document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
         document.getElementById('btn-alcolico').onclick = async () => {
             const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
@@ -203,11 +179,6 @@
             BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
             connect();
         };
-        // Registrazione Service Worker per modalità Standalone
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-        .then(() => console.log("Service Worker Registrato"));
-}
     </script>
 </body>
 </html>
