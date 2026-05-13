@@ -3,123 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminale Cloud - Hub</title>
+    <title>Terminale Operativo v2.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-900 text-gray-200 p-6 font-mono">
-    <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
-        <h1 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">Terminale Cloud - Hub</h1>
+<body class="bg-gray-900 text-gray-200 p-4 font-mono text-sm">
+    <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
+        <h1 class="text-xl font-bold mb-4 text-white border-b border-gray-600 pb-2 uppercase tracking-tighter">Hub Monitoraggio Cloud</h1>
         
-        <div class="mb-6 p-4 bg-gray-700 rounded border border-gray-600">
-            <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Tabacco</h2>
-            <button id="btn-sigaretta" class="w-full bg-red-800 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-red-600 shadow-md">
-                Registra 1 Sigaretta
-            </button>
+        <!-- DEBUG CONSOLE: Fondamentale per capire l'errore -->
+        <div id="debug-info" class="bg-black text-yellow-500 p-2 text-[10px] mb-4 border border-yellow-900 rounded hidden"></div>
+
+        <div class="space-y-4">
+            <section class="p-4 bg-gray-700/50 rounded border border-gray-600">
+                <h2 class="text-xs font-bold mb-3 text-gray-400 uppercase">Tabacco</h2>
+                <button id="btn-sigaretta" class="w-full bg-red-800 active:scale-95 text-white font-bold py-3 rounded border border-red-600 shadow-lg">REGISTRA SIGARETTA</button>
+            </section>
+
+            <section class="p-4 bg-gray-700/50 rounded border border-gray-600">
+                <h2 class="text-xs font-bold mb-3 text-gray-400 uppercase">Alcolici</h2>
+                <select id="select-alcolico" class="w-full mb-3 bg-gray-900 text-white border border-gray-500 rounded p-3 focus:ring-1 focus:ring-blue-500 outline-none">
+                    <option value="">Caricamento...</option>
+                </select>
+                <button id="btn-alcolico" class="w-full bg-blue-800 active:scale-95 text-white font-bold py-3 rounded border border-blue-600 shadow-lg">REGISTRA ALCOLICO</button>
+            </section>
         </div>
 
-        <div class="mb-8 p-4 bg-gray-700 rounded border border-gray-600">
-            <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Alcolici</h2>
-            <select id="select-alcolico" class="w-full mb-4 bg-gray-900 text-white border border-gray-500 rounded p-3 focus:outline-none focus:border-blue-500">
-            </select>
-            <button id="btn-alcolico" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-blue-600 shadow-md">
-                Registra Alcolico
-            </button>
-        </div>
-
-        <div class="bg-gray-900 p-4 rounded border border-gray-700 relative">
-            <h2 class="text-lg font-semibold mb-3 text-gray-400">Log Sistema (Supabase)</h2>
-            <div id="loader" class="hidden absolute top-4 right-4 text-sm text-blue-400 animate-pulse">Sincronizzazione...</div>
-            <ul id="log-lista" class="space-y-2 text-sm"></ul>
+        <div class="mt-6 bg-gray-900 p-4 rounded border border-gray-700">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xs font-bold text-gray-500 uppercase">Log Recenti</h2>
+                <div id="status-cloud" class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+            </div>
+            <ul id="log-lista" class="space-y-3"></ul>
         </div>
     </div>
 
     <script>
-        // CONFIGURAZIONE ESTRATTA DALLE SUE IMMAGINI
-        const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
-
-        const DataCore = {
-            categorieAlcolici: [
-                { id: "birra_piccola", nome: "Birra Piccola", volume_ml: 200, abv: 5.0 },
-                { id: "birra_bottiglia_330", nome: "Birra Bott. 330", volume_ml: 330, abv: 5.0 },
-                { id: "birra_media", nome: "Birra Media", volume_ml: 400, abv: 5.0 },
-                { id: "birra_bottiglia_660", nome: "Birra Bott. 660", volume_ml: 660, abv: 5.0 },
-                { id: "vino_calice", nome: "Vino Calice", volume_ml: 150, abv: 12.0 },
-                { id: "vino_bottiglia", nome: "Vino Bottiglia", volume_ml: 750, abv: 12.0 },
-                { id: "amaro_bicchiere", nome: "Amaro/Digestivo", volume_ml: 60, abv: 30.0 },
-                { id: "shot", nome: "Shot", volume_ml: 40, abv: 40.0 },
-                { id: "cocktail", nome: "Cocktail", volume_ml: 200, abv: 15.0 }
-            ]
+        const CONFIG = {
+            URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
+            KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP'
         };
 
-        let supabase;
+        const BEVANDE = [
+            { id: "b1", n: "Birra Piccola", v: 200, a: 5.0 },
+            { id: "b2", n: "Birra Bott. 330", v: 330, a: 5.0 },
+            { id: "b3", n: "Birra Media", v: 400, a: 5.0 },
+            { id: "b4", n: "Birra Bott. 660", v: 660, a: 5.0 },
+            { id: "v1", n: "Vino Calice", v: 150, a: 12.0 },
+            { id: "v2", n: "Vino Bottiglia", v: 750, a: 12.0 },
+            { id: "a1", n: "Amaro", v: 60, a: 30.0 },
+            { id: "s1", n: "Shot", v: 40, a: 40.0 },
+            { id: "c1", n: "Cocktail", v: 200, a: 15.0 }
+        ];
 
-        function inizializzaUI() {
-            const selectAlcolico = document.getElementById('select-alcolico');
-            DataCore.categorieAlcolici.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.id;
-                option.textContent = `${cat.nome} (${cat.volume_ml}ml - ${cat.abv}%)`;
-                selectAlcolico.appendChild(option);
-            });
-            console.log("UI Popolata correttamente.");
+        let sb = null;
+
+        function debug(msg) {
+            const d = document.getElementById('debug-info');
+            d.classList.remove('hidden');
+            d.innerHTML += `> ${msg}<br>`;
         }
 
-        async function connettiCloud() {
+        // 1. POPOLAMENTO ISTANTANEO UI
+        function setupUI() {
+            const sel = document.getElementById('select-alcolico');
+            sel.innerHTML = '';
+            BEVANDE.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = `${b.n} (${b.v}ml)`;
+                sel.appendChild(opt);
+            });
+            debug("UI Inizializzata");
+        }
+
+        // 2. CONNESSIONE CLOUD
+        async function connect() {
             try {
-                if (typeof window.supabase === 'undefined') throw new Error("Libreria non trovata");
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                await caricaDati();
-            } catch (err) {
-                console.error("Errore connessione Cloud:", err);
+                if (typeof supabase === 'undefined') throw new Error("Libreria Supabase mancante");
+                sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
+                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-green-600');
+                debug("Cloud Connesso");
+                await refresh();
+            } catch (e) {
+                debug("ERRORE: " + e.message);
             }
         }
 
-        async function caricaDati() {
-            const loader = document.getElementById('loader');
-            loader.classList.remove('hidden');
-            const { data, error } = await supabase.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(30);
-            if (!error) aggiornaLogVisivo(data);
-            loader.classList.add('hidden');
+        async function refresh() {
+            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(20);
+            if (error) debug("Refresh Error: " + error.message);
+            render(data || []);
         }
 
-        async function registraDato(nome, quantita) {
-            if(!supabase) return alert("Database non connesso");
-            document.getElementById('loader').classList.remove('hidden');
-            await supabase.from('registrazioni').insert([{ nome, quantita }]);
-            await caricaDati();
+        async function add(nome, qta) {
+            debug(`Inserimento: ${nome}...`);
+            const { error } = await sb.from('registrazioni').insert([{ nome, quantita: qta }]);
+            if (error) alert("Errore: " + error.message);
+            await refresh();
         }
 
-        function aggiornaLogVisivo(dati) {
-            const listaLog = document.getElementById('log-lista');
-            listaLog.innerHTML = '';
-            dati.forEach(item => {
-                const ora = new Date(item.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        function render(items) {
+            const list = document.getElementById('log-lista');
+            list.innerHTML = '';
+            items.forEach(i => {
+                const time = new Date(i.created_at).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
                 const li = document.createElement('li');
-                li.className = "flex justify-between items-center border-b border-gray-800 pb-2 mb-2 text-xs";
-                li.innerHTML = `<div><span class="text-gray-500 mr-2">[${ora}]</span><span class="text-gray-200">${item.nome}</span><br><span class="text-gray-400 font-bold">${item.quantita}</span></div><button onclick="rimuovi('${item.id}')" class="text-red-500 border border-red-800 px-2 py-1 rounded">Elimina</button>`;
-                listaLog.appendChild(li);
+                li.className = "flex justify-between items-center bg-gray-800/50 p-2 rounded border border-gray-700";
+                li.innerHTML = `<div><p class="text-[10px] text-gray-500">${time}</p><p class="text-white font-bold">${i.nome}</p><p class="text-[10px] text-gray-400">${i.quantita}</p></div>
+                                <button onclick="del('${i.id}')" class="text-red-500 text-[10px] border border-red-900 px-2 py-1 rounded">ELIMINA</button>`;
+                list.appendChild(li);
             });
         }
 
-        window.rimuovi = async (id) => {
-            await supabase.from('registrazioni').delete().eq('id', id);
-            await caricaDati();
+        window.del = async (id) => {
+            await sb.from('registrazioni').delete().eq('id', id);
+            await refresh();
         };
 
-        document.getElementById('btn-sigaretta').onclick = () => registraDato("Sigaretta", "1 unità");
+        document.getElementById('btn-sigaretta').onclick = () => add("Sigaretta", "1 unità");
         document.getElementById('btn-alcolico').onclick = () => {
-            const cat = DataCore.categorieAlcolici.find(c => c.id === document.getElementById('select-alcolico').value);
-            const massa = (cat.volume_ml * (cat.abv / 100) * 0.789).toFixed(2);
-            registraDato(cat.nome, `${cat.volume_ml}ml | ${cat.abv}% | ${massa}g`);
+            const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
+            const g = (b.v * (b.a / 100) * 0.789).toFixed(2);
+            add(b.n, `${b.v}ml | ${b.a}% | ${g}g`);
         };
 
-        // AVVIO SEQUENZIALE
-        document.addEventListener('DOMContentLoaded', () => {
-            inizializzaUI();
-            connettiCloud();
-        });
+        window.onload = () => {
+            setupUI();
+            setTimeout(connect, 500); // Ritardo per permettere il caricamento delle librerie
+        };
     </script>
 </body>
 </html>
