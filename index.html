@@ -23,7 +23,33 @@
             </div>
             <div id="status-cloud" class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
         </header>
+</header>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="stat-card p-4 rounded-xl border-l-2 border-emerald-500">
+                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Timer Attività</p>
+                <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400 uppercase">Ultima Sigaretta:</span>
+                    <span id="timer-sigaretta" class="font-bold text-white">--:--</span>
+                </div>
+                <div class="flex justify-between text-[11px] mt-1">
+                    <span class="text-slate-400 uppercase">Ultimo Alcolico:</span>
+                    <span id="timer-alcolico" class="font-bold text-white">--:--</span>
+                </div>
+            </div>
+            <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500">
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Analisi Alcolemica (BAC)</p>
+                <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400 uppercase">Tasso Stimato:</span>
+                    <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
+                </div>
+                <div class="flex justify-between text-[11px] mt-1">
+                    <span class="text-slate-400 uppercase">Rientro Limite (0.5):</span>
+                    <span id="bac-wait-time" class="font-bold text-emerald-500">Idoneo alla guida</span>
+                </div>
+                <p class="text-[7px] text-slate-500 mt-2 italic">*Stima indicativa (Fonte: CNESPS)</p>
+            </div>
+        </div>
         <!-- Intelligence Dashboard -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
             <div class="stat-card p-4 rounded-xl">
@@ -105,7 +131,46 @@
             if (mins < 2880) return "Regenerazione terminazioni nervose (Gusto/Olfatto).";
             return "Capacità polmonare e circolazione in netto miglioramento.";
         }
+const PROFILE = {
+            sesso: 'uomo',
+            peso: 60,
+            altezza: 1.78,
+            nascita: new Date('1992-07-12'),
+            limit_bac: 0.5,
+            burn_rate: 0.15 
+        };
 
+        function updateBiometrics() {
+            if (rawData.length === 0) return;
+            let lastSig = rawData.find(i => i.nome === "Sigaretta");
+            let lastAlc = rawData.find(i => i.nome !== "Sigaretta");
+            if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
+            if (lastAlc) {
+                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(lastAlc.created_at).getTime());
+                calculateBAC(lastAlc);
+            }
+        }
+
+        function calculateBAC(ultimoAlcolico) {
+            const oreTrascorse = (Date.now() - new Date(ultimoAlcolico.created_at).getTime()) / 3600000;
+            const match = ultimoAlcolico.quantita.match(/(\d+\.\d+)g/);
+            if (!match) return;
+            const bacPerGrammo = 0.0154; 
+            let bacStimato = (parseFloat(match[1]) * bacPerGrammo) - (oreTrascorse * PROFILE.burn_rate);
+            bacStimato = Math.max(0, bacStimato);
+            document.getElementById('bac-value').innerText = `${bacStimato.toFixed(2)} g/l`;
+            const waitEl = document.getElementById('bac-wait-time');
+            if (bacStimato > PROFILE.limit_bac) {
+                const minAttesa = Math.ceil(((bacStimato - PROFILE.limit_bac) / PROFILE.burn_rate) * 60);
+                waitEl.innerText = `~ ${minAttesa} min alla guida`;
+                waitEl.className = "font-bold text-rose-500 animate-pulse";
+            } else {
+                waitEl.innerText = "Idoneo alla guida";
+                waitEl.className = "font-bold text-emerald-500";
+            }
+        }
+
+        async function connect() { // ... restate del codice ...
         async function connect() {
             sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
             await refresh();
@@ -118,6 +183,7 @@
             if (!error) {
                 rawData = data;
                 updateAnalytics();
+                updateBiometrics();
                 render();
             }
             loader.classList.add('hidden');
