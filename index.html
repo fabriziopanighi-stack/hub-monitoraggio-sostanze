@@ -1,18 +1,18 @@
-<https://fyibnjnqrmgzeozxxsfx.supabase.co/rest/v1/>
-<sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP>
+// === DATI SUPABASE ===
+const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co'; 
+const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminale di Tracciamento Cloud</title>
+    <title>Terminale Cloud - Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Integrazione Libreria Supabase CDN -->
+    <!-- Libreria Supabase corretta -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-gray-200 p-6 font-mono">
     <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
         <h1 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">Terminale Cloud - Hub</h1>
         
-        <!-- Macro-Categoria: Tabacco -->
         <div class="mb-6 p-4 bg-gray-700 rounded border border-gray-600">
             <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Tabacco</h2>
             <button id="btn-sigaretta" class="w-full bg-red-800 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-red-600 shadow-md">
@@ -20,34 +20,29 @@
             </button>
         </div>
 
-        <!-- Macro-Categoria: Alcolici -->
         <div class="mb-8 p-4 bg-gray-700 rounded border border-gray-600">
             <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Alcolici</h2>
             <select id="select-alcolico" class="w-full mb-4 bg-gray-900 text-white border border-gray-500 rounded p-3 focus:outline-none focus:border-blue-500">
-                <!-- Opzioni iniettate dal motore logico -->
             </select>
             <button id="btn-alcolico" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-blue-600 shadow-md">
                 Registra Alcolico
             </button>
         </div>
 
-        <!-- Log Odierno -->
         <div class="bg-gray-900 p-4 rounded border border-gray-700 relative">
             <h2 class="text-lg font-semibold mb-3 text-gray-400">Log Sistema (Supabase)</h2>
-            <div id="loader" class="hidden absolute top-4 right-4 text-sm text-blue-400 animate-pulse">Sincronizzazione in corso...</div>
+            <div id="loader" class="hidden absolute top-4 right-4 text-sm text-blue-400 animate-pulse">Sincronizzazione...</div>
             <ul id="log-lista" class="space-y-2 text-sm"></ul>
         </div>
     </div>
 
     <script>
-        // === INSERISCA QUI I SUOI DATI SUPABASE ===
+        // === DATI SUPABASE ===
         const SUPABASE_URL = 'INSERISCA_QUI_IL_SUO_URL'; 
         const SUPABASE_ANON_KEY = 'INSERISCA_QUI_LA_SUA_CHIAVE_ANON';
-        // ==========================================
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase;
 
-        // MOTORE DATI CLOUD
         const DataCore = {
             categorieAlcolici: [
                 { id: "birra_piccola", nome: "Birra Piccola", volume_ml: 200, abv: 5.0 },
@@ -59,69 +54,24 @@
                 { id: "amaro_bicchiere", nome: "Amaro/Digestivo", volume_ml: 60, abv: 30.0 },
                 { id: "shot", nome: "Shot", volume_ml: 40, abv: 40.0 },
                 { id: "cocktail", nome: "Cocktail", volume_ml: 200, abv: 15.0 }
-            ],
-
-            async caricaDati() {
-                const { data, error } = await supabase
-                    .from('registrazioni')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(50); // Limita ai 50 più recenti per ottimizzare le prestazioni
-                
-                if (error) {
-                    console.error("Errore recupero dati:", error);
-                    return [];
-                }
-                return data;
-            },
-
-            async registraDato(nomeInserito, quantitaInserita) {
-                const { error } = await supabase
-                    .from('registrazioni')
-                    .insert([{ nome: nomeInserito, quantita: quantitaInserita }]);
-                
-                if (error) console.error("Errore inserimento:", error);
-                return this.caricaDati();
-            },
-
-            async registraTabacco() {
-                return await this.registraDato("Sigaretta", "1 unità");
-            },
-
-            async registraAlcolico(idCategoria) {
-                const categoria = this.categorieAlcolici.find(c => c.id === idCategoria);
-                if (!categoria) return false;
-
-                const massaAlcolica = (categoria.volume_ml * (categoria.abv / 100) * 0.789).toFixed(2);
-                const stringaQuantita = `${categoria.volume_ml}ml | ${categoria.abv}% ABV | ${massaAlcolica}g`;
-                
-                return await this.registraDato(categoria.nome, stringaQuantita);
-            },
-
-            async rimuoviRecord(idRecord) {
-                const { error } = await supabase
-                    .from('registrazioni')
-                    .delete()
-                    .eq('id', idRecord);
-                
-                if (error) console.error("Errore rimozione:", error);
-                return this.caricaDati();
-            }
+            ]
         };
 
-        // MANIPOLAZIONE DOM
-        document.addEventListener('DOMContentLoaded', async () => {
+        async function inizializzaSistema() {
+            // Verifica caricamento libreria
+            if (typeof window.supabase === 'undefined') {
+                console.error("Libreria Supabase non caricata.");
+                return;
+            }
+
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
             const selectAlcolico = document.getElementById('select-alcolico');
             const btnSigaretta = document.getElementById('btn-sigaretta');
             const btnAlcolico = document.getElementById('btn-alcolico');
-            const listaLog = document.getElementById('log-lista');
             const loader = document.getElementById('loader');
 
-            function toggleLoader(stato) {
-                stato ? loader.classList.remove('hidden') : loader.classList.add('hidden');
-            }
-
-            // Inizializzazione tendina
+            // Popolamento tendina
             DataCore.categorieAlcolici.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
@@ -129,65 +79,59 @@
                 selectAlcolico.appendChild(option);
             });
 
-            // Caricamento Iniziale
-            toggleLoader(true);
-            const datiIniziali = await DataCore.caricaDati();
-            aggiornaLogVisivo(datiIniziali);
-            toggleLoader(false);
-
-            // Trigger Inserimento Tabacco
-            btnSigaretta.onclick = async () => {
-                toggleLoader(true);
-                const datiAggiornati = await DataCore.registraTabacco();
-                aggiornaLogVisivo(datiAggiornati);
-                toggleLoader(false);
+            const caricaDati = async () => {
+                loader.classList.remove('hidden');
+                const { data, error } = await supabase.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(50);
+                if (error) console.error(error);
+                aggiornaLogVisivo(data || []);
+                loader.classList.add('hidden');
             };
 
-            // Trigger Inserimento Alcolici
-            btnAlcolico.onclick = async () => {
-                toggleLoader(true);
-                const idSelezionato = selectAlcolico.value;
-                const datiAggiornati = await DataCore.registraAlcolico(idSelezionato);
-                if (datiAggiornati) aggiornaLogVisivo(datiAggiornati);
-                toggleLoader(false);
+            const registraDato = async (nome, quantita) => {
+                loader.classList.remove('hidden');
+                await supabase.from('registrazioni').insert([{ nome, quantita }]);
+                await caricaDati();
+                loader.classList.add('hidden');
             };
 
-            // Rendering del Log
+            btnSigaretta.onclick = () => registraDato("Sigaretta", "1 unità");
+
+            btnAlcolico.onclick = () => {
+                const cat = DataCore.categorieAlcolici.find(c => c.id === selectAlcolico.value);
+                const massa = (cat.volume_ml * (cat.abv / 100) * 0.789).toFixed(2);
+                registraDato(cat.nome, `${cat.volume_ml}ml | ${cat.abv}% ABV | ${massa}g`);
+            };
+
+            window.richiediRimozioneCloud = async (id) => {
+                loader.classList.remove('hidden');
+                await supabase.from('registrazioni').delete().eq('id', id);
+                await caricaDati();
+                loader.classList.add('hidden');
+            };
+
             function aggiornaLogVisivo(dati) {
+                const listaLog = document.getElementById('log-lista');
                 listaLog.innerHTML = '';
-                
                 dati.forEach(item => {
-                    const li = document.createElement('li');
                     const dataObj = new Date(item.created_at);
-                    const dataFormattata = dataObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-                    const oraFormattata = dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                    
-                    li.className = "flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-800 pb-2 mb-2";
-                    
+                    const ora = dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center border-b border-gray-800 pb-2 mb-2";
                     li.innerHTML = `
                         <div class="flex flex-col">
-                            <span class="text-gray-200">
-                                <span class="text-gray-500 text-xs mr-2">[${dataFormattata} ${oraFormattata}]</span>
-                                ${item.nome}
-                            </span>
-                            <span class="text-gray-400 font-bold text-xs mt-1">${item.quantita}</span>
+                            <span class="text-gray-200 text-sm"><span class="text-gray-500 text-xs mr-2">[${ora}]</span>${item.nome}</span>
+                            <span class="text-gray-400 font-bold text-xs">${item.quantita}</span>
                         </div>
-                        <button onclick="richiediRimozioneCloud('${item.id}')" class="mt-2 sm:mt-0 text-red-500 hover:text-red-400 text-xs font-bold px-2 py-1 border border-red-800 rounded hover:bg-gray-800 transition">
-                            Rimuovi
-                        </button>
+                        <button onclick="richiediRimozioneCloud('${item.id}')" class="text-red-500 text-xs border border-red-800 px-2 py-1 rounded">Rimuovi</button>
                     `;
                     listaLog.appendChild(li);
                 });
             }
 
-            // Funzione globale per rimozione asincrona
-            window.richiediRimozioneCloud = async function(id) {
-                toggleLoader(true);
-                const datiAggiornati = await DataCore.rimuoviRecord(id);
-                aggiornaLogVisivo(datiAggiornati);
-                toggleLoader(false);
-            };
-        });
+            await caricaDati();
+        }
+
+        window.onload = inizializzaSistema;
     </script>
 </body>
 </html>
