@@ -203,6 +203,11 @@
             BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
             connect();
         };
+        // Registrazione Service Worker per modalità Standalone
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(() => console.log("Service Worker Registrato"));
+}
     </script>
 </body>
 </html>
