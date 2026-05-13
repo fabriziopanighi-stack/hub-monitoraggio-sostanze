@@ -66,7 +66,7 @@
         const CONFIG = {
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
-            BASELINE_SPESA: 124.50 // Baseline settimanale fissa
+            BASELINE_SPESA: 124.50 
         };
 
         const BEVANDE = [
@@ -85,11 +85,24 @@
         let rawData = [];
         let currentView = 'live';
 
+        function getDeltaConfig(ms) {
+            const mins = ms / 60000;
+            if (mins < 90) return { label: "Critico", color: "text-rose-500" };
+            if (mins < 180) return { label: "Moderato", color: "text-amber-500" };
+            return { label: "Ottimale", color: "text-emerald-500" };
+        }
+
+        function formatDelta(ms) {
+            const mins = Math.floor(ms / 60000);
+            const hrs = Math.floor(mins / 60);
+            return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+        }
+
         function getHealthInsight(ms) {
             const mins = ms / 60000;
             if (mins < 20) return "Normalizzazione battito cardiaco in corso.";
             if (mins < 720) return "Livelli di CO nel sangue tornano alla normalità.";
-            if (mins < 2880) return "Rigenerazione terminazioni nervose (Gusto/Olfatto).";
+            if (mins < 2880) return "Regenerazione terminazioni nervose (Gusto/Olfatto).";
             return "Capacità polmonare e circolazione in netto miglioramento.";
         }
 
@@ -99,12 +112,15 @@
         }
 
         async function refresh() {
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
             const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(300);
             if (!error) {
                 rawData = data;
                 updateAnalytics();
                 render();
             }
+            loader.classList.add('hidden');
         }
 
         function updateAnalytics() {
@@ -134,11 +150,30 @@
             const list = document.getElementById('log-lista');
             list.innerHTML = '';
             if (currentView === 'live') {
-                rawData.forEach(i => {
+                const categories = { 'Sigaretta': null, 'Alcohol': null };
+                const processed = [...rawData].reverse().map(item => {
+                    const catKey = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
+                    const currentTs = new Date(item.created_at).getTime();
+                    const delta = categories[catKey] ? currentTs - categories[catKey] : null;
+                    categories[catKey] = currentTs;
+                    return { ...item, delta };
+                }).reverse();
+
+                processed.forEach(i => {
                     const dt = new Date(i.created_at);
+                    const dConfig = i.delta ? getDeltaConfig(i.delta) : null;
                     const li = document.createElement('li');
                     li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
-                    li.innerHTML = `<div><p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')}</p><p class="text-sm font-bold text-white uppercase">${i.nome}</p></div><button onclick="del('${i.id}')" class="text-rose-500/50 text-[9px] font-bold uppercase tracking-widest p-2">Elimina</button>`;
+                    li.innerHTML = `
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')} — ${dt.toLocaleDateString('it-IT')}</p>
+                            <p class="text-sm font-bold text-white uppercase">${i.nome}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            ${i.delta ? `<span class="text-[9px] font-black ${dConfig.color} uppercase tracking-widest">Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase italic">Sessione Start</span>'}
+                            <button onclick="del('${i.id}')" class="mt-2 text-rose-500/50 text-[9px] font-bold uppercase tracking-widest p-2">Elimina</button>
+                        </div>`;
                     list.appendChild(li);
                 });
             } else {
