@@ -1,14 +1,16 @@
-<!DOCTYPE html>
-<html lang="it">
+<https://fyibnjnqrmgzeozxxsfx.supabase.co/rest/v1/>
+<sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminale di Tracciamento</title>
+    <title>Terminale di Tracciamento Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Integrazione Libreria Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-gray-200 p-6 font-mono">
     <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
-        <h1 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">Terminale Registrazione</h1>
+        <h1 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">Terminale Cloud - Hub</h1>
         
         <!-- Macro-Categoria: Tabacco -->
         <div class="mb-6 p-4 bg-gray-700 rounded border border-gray-600">
@@ -30,14 +32,22 @@
         </div>
 
         <!-- Log Odierno -->
-        <div class="bg-gray-900 p-4 rounded border border-gray-700">
-            <h2 class="text-lg font-semibold mb-3 text-gray-400">Log Sistema</h2>
+        <div class="bg-gray-900 p-4 rounded border border-gray-700 relative">
+            <h2 class="text-lg font-semibold mb-3 text-gray-400">Log Sistema (Supabase)</h2>
+            <div id="loader" class="hidden absolute top-4 right-4 text-sm text-blue-400 animate-pulse">Sincronizzazione in corso...</div>
             <ul id="log-lista" class="space-y-2 text-sm"></ul>
         </div>
     </div>
 
     <script>
-        // MOTORE DATI (Logica & Persistenza)
+        // === INSERISCA QUI I SUOI DATI SUPABASE ===
+        const SUPABASE_URL = 'INSERISCA_QUI_IL_SUO_URL'; 
+        const SUPABASE_ANON_KEY = 'INSERISCA_QUI_LA_SUA_CHIAVE_ANON';
+        // ==========================================
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // MOTORE DATI CLOUD
         const DataCore = {
             categorieAlcolici: [
                 { id: "birra_piccola", nome: "Birra Piccola", volume_ml: 200, abv: 5.0 },
@@ -50,67 +60,68 @@
                 { id: "shot", nome: "Shot", volume_ml: 40, abv: 40.0 },
                 { id: "cocktail", nome: "Cocktail", volume_ml: 200, abv: 15.0 }
             ],
-            registro: [],
 
-            // Inizializzazione e recupero dati da LocalStorage
-            inizializza() {
-                const datiSalvati = localStorage.getItem('hub_monitoraggio_sostanze');
-                if (datiSalvati) {
-                    this.registro = JSON.parse(datiSalvati);
+            async caricaDati() {
+                const { data, error } = await supabase
+                    .from('registrazioni')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50); // Limita ai 50 più recenti per ottimizzare le prestazioni
+                
+                if (error) {
+                    console.error("Errore recupero dati:", error);
+                    return [];
                 }
-                return this.registro;
+                return data;
             },
 
-            // Salvataggio su LocalStorage
-            salvaStato() {
-                localStorage.setItem('hub_monitoraggio_sostanze', JSON.stringify(this.registro));
+            async registraDato(nomeInserito, quantitaInserita) {
+                const { error } = await supabase
+                    .from('registrazioni')
+                    .insert([{ nome: nomeInserito, quantita: quantitaInserita }]);
+                
+                if (error) console.error("Errore inserimento:", error);
+                return this.caricaDati();
             },
 
-            registraTabacco() {
-                const dato = {
-                    id: Date.now().toString(), // ID univoco per la rimozione
-                    timestamp: new Date().toISOString(),
-                    nome: "Sigaretta",
-                    quantita: "1 unità"
-                };
-                this.registro.push(dato);
-                this.salvaStato();
-                return this.registro;
+            async registraTabacco() {
+                return await this.registraDato("Sigaretta", "1 unità");
             },
 
-            registraAlcolico(idCategoria) {
+            async registraAlcolico(idCategoria) {
                 const categoria = this.categorieAlcolici.find(c => c.id === idCategoria);
                 if (!categoria) return false;
 
-                // Calcolo massa alcolica: Volume * (ABV/100) * Densità Etanolo (0.789)
                 const massaAlcolica = (categoria.volume_ml * (categoria.abv / 100) * 0.789).toFixed(2);
-
-                const dato = {
-                    id: Date.now().toString(), // ID univoco per la rimozione
-                    timestamp: new Date().toISOString(),
-                    nome: categoria.nome,
-                    quantita: `${categoria.volume_ml}ml | ${categoria.abv}% ABV | ${massaAlcolica}g`
-                };
-                this.registro.push(dato);
-                this.salvaStato();
-                return this.registro;
+                const stringaQuantita = `${categoria.volume_ml}ml | ${categoria.abv}% ABV | ${massaAlcolica}g`;
+                
+                return await this.registraDato(categoria.nome, stringaQuantita);
             },
 
-            rimuoviRecord(idRecord) {
-                this.registro = this.registro.filter(item => item.id !== idRecord);
-                this.salvaStato();
-                return this.registro;
+            async rimuoviRecord(idRecord) {
+                const { error } = await supabase
+                    .from('registrazioni')
+                    .delete()
+                    .eq('id', idRecord);
+                
+                if (error) console.error("Errore rimozione:", error);
+                return this.caricaDati();
             }
         };
 
-        // MANIPOLAZIONE DOM (Interfaccia)
-        document.addEventListener('DOMContentLoaded', () => {
+        // MANIPOLAZIONE DOM
+        document.addEventListener('DOMContentLoaded', async () => {
             const selectAlcolico = document.getElementById('select-alcolico');
             const btnSigaretta = document.getElementById('btn-sigaretta');
             const btnAlcolico = document.getElementById('btn-alcolico');
             const listaLog = document.getElementById('log-lista');
+            const loader = document.getElementById('loader');
 
-            // Inizializzazione tendina alcolici
+            function toggleLoader(stato) {
+                stato ? loader.classList.remove('hidden') : loader.classList.add('hidden');
+            }
+
+            // Inizializzazione tendina
             DataCore.categorieAlcolici.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
@@ -118,33 +129,36 @@
                 selectAlcolico.appendChild(option);
             });
 
-            // Caricamento dati iniziali
-            const datiIniziali = DataCore.inizializza();
+            // Caricamento Iniziale
+            toggleLoader(true);
+            const datiIniziali = await DataCore.caricaDati();
             aggiornaLogVisivo(datiIniziali);
+            toggleLoader(false);
 
             // Trigger Inserimento Tabacco
-            btnSigaretta.onclick = () => {
-                const datiAggiornati = DataCore.registraTabacco();
+            btnSigaretta.onclick = async () => {
+                toggleLoader(true);
+                const datiAggiornati = await DataCore.registraTabacco();
                 aggiornaLogVisivo(datiAggiornati);
+                toggleLoader(false);
             };
 
             // Trigger Inserimento Alcolici
-            btnAlcolico.onclick = () => {
+            btnAlcolico.onclick = async () => {
+                toggleLoader(true);
                 const idSelezionato = selectAlcolico.value;
-                const datiAggiornati = DataCore.registraAlcolico(idSelezionato);
+                const datiAggiornati = await DataCore.registraAlcolico(idSelezionato);
                 if (datiAggiornati) aggiornaLogVisivo(datiAggiornati);
+                toggleLoader(false);
             };
 
-            // Rendering del Log con funzione di eliminazione
+            // Rendering del Log
             function aggiornaLogVisivo(dati) {
                 listaLog.innerHTML = '';
                 
-                // Creazione array inverso per mostrare l'ultimo inserimento in alto
-                [...dati].reverse().forEach(item => {
+                dati.forEach(item => {
                     const li = document.createElement('li');
-                    
-                    // Formattazione data e ora
-                    const dataObj = new Date(item.timestamp);
+                    const dataObj = new Date(item.created_at);
                     const dataFormattata = dataObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
                     const oraFormattata = dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
                     
@@ -158,7 +172,7 @@
                             </span>
                             <span class="text-gray-400 font-bold text-xs mt-1">${item.quantita}</span>
                         </div>
-                        <button onclick="richiediRimozione('${item.id}')" class="mt-2 sm:mt-0 text-red-500 hover:text-red-400 text-xs font-bold px-2 py-1 border border-red-800 rounded hover:bg-gray-800 transition">
+                        <button onclick="richiediRimozioneCloud('${item.id}')" class="mt-2 sm:mt-0 text-red-500 hover:text-red-400 text-xs font-bold px-2 py-1 border border-red-800 rounded hover:bg-gray-800 transition">
                             Rimuovi
                         </button>
                     `;
@@ -166,10 +180,12 @@
                 });
             }
 
-            // Funzione globale per il bottone di rimozione
-            window.richiediRimozione = function(id) {
-                const datiAggiornati = DataCore.rimuoviRecord(id);
+            // Funzione globale per rimozione asincrona
+            window.richiediRimozioneCloud = async function(id) {
+                toggleLoader(true);
+                const datiAggiornati = await DataCore.rimuoviRecord(id);
                 aggiornaLogVisivo(datiAggiornati);
+                toggleLoader(false);
             };
         });
     </script>
