@@ -35,11 +35,9 @@
     </div>
 
     <script>
-        // === DATI ESTRATTI DA IMMAGINE 1000035869.jpg ===
+        // CONFIGURAZIONE ESTRATTA DALLE SUE IMMAGINI
         const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
-
-        let supabase;
 
         const DataCore = {
             categorieAlcolici: [
@@ -55,79 +53,73 @@
             ]
         };
 
-        async function inizializzaSistema() {
-            if (typeof window.supabase === 'undefined') {
-                console.error("Libreria Supabase non caricata.");
-                return;
-            }
+        let supabase;
 
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
+        function inizializzaUI() {
             const selectAlcolico = document.getElementById('select-alcolico');
-            const btnSigaretta = document.getElementById('btn-sigaretta');
-            const btnAlcolico = document.getElementById('btn-alcolico');
-            const loader = document.getElementById('loader');
-
             DataCore.categorieAlcolici.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
                 option.textContent = `${cat.nome} (${cat.volume_ml}ml - ${cat.abv}%)`;
                 selectAlcolico.appendChild(option);
             });
+            console.log("UI Popolata correttamente.");
+        }
 
-            const caricaDati = async () => {
-                loader.classList.remove('hidden');
-                const { data, error } = await supabase.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(50);
-                if (error) console.error(error);
-                aggiornaLogVisivo(data || []);
-                loader.classList.add('hidden');
-            };
-
-            const registraDato = async (nome, quantita) => {
-                loader.classList.remove('hidden');
-                await supabase.from('registrazioni').insert([{ nome, quantita }]);
+        async function connettiCloud() {
+            try {
+                if (typeof window.supabase === 'undefined') throw new Error("Libreria non trovata");
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 await caricaDati();
-                loader.classList.add('hidden');
-            };
-
-            btnSigaretta.onclick = () => registraDato("Sigaretta", "1 unità");
-
-            btnAlcolico.onclick = () => {
-                const cat = DataCore.categorieAlcolici.find(c => c.id === selectAlcolico.value);
-                const massa = (cat.volume_ml * (cat.abv / 100) * 0.789).toFixed(2);
-                registraDato(cat.nome, `${cat.volume_ml}ml | ${cat.abv}% ABV | ${massa}g`);
-            };
-
-            window.richiediRimozioneCloud = async (id) => {
-                loader.classList.remove('hidden');
-                await supabase.from('registrazioni').delete().eq('id', id);
-                await caricaDati();
-                loader.classList.add('hidden');
-            };
-
-            function aggiornaLogVisivo(dati) {
-                const listaLog = document.getElementById('log-lista');
-                listaLog.innerHTML = '';
-                dati.forEach(item => {
-                    const dataObj = new Date(item.created_at);
-                    const ora = dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                    const li = document.createElement('li');
-                    li.className = "flex justify-between items-center border-b border-gray-800 pb-2 mb-2";
-                    li.innerHTML = `
-                        <div class="flex flex-col">
-                            <span class="text-gray-200 text-sm"><span class="text-gray-500 text-xs mr-2">[${ora}]</span>${item.nome}</span>
-                            <span class="text-gray-400 font-bold text-xs">${item.quantita}</span>
-                        </div>
-                        <button onclick="richiediRimozioneCloud('${item.id}')" class="text-red-500 text-xs border border-red-800 px-2 py-1 rounded">Rimuovi</button>
-                    `;
-                    listaLog.appendChild(li);
-                });
+            } catch (err) {
+                console.error("Errore connessione Cloud:", err);
             }
+        }
 
+        async function caricaDati() {
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+            const { data, error } = await supabase.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(30);
+            if (!error) aggiornaLogVisivo(data);
+            loader.classList.add('hidden');
+        }
+
+        async function registraDato(nome, quantita) {
+            if(!supabase) return alert("Database non connesso");
+            document.getElementById('loader').classList.remove('hidden');
+            await supabase.from('registrazioni').insert([{ nome, quantita }]);
             await caricaDati();
         }
 
-        window.onload = inizializzaSistema;
+        function aggiornaLogVisivo(dati) {
+            const listaLog = document.getElementById('log-lista');
+            listaLog.innerHTML = '';
+            dati.forEach(item => {
+                const ora = new Date(item.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center border-b border-gray-800 pb-2 mb-2 text-xs";
+                li.innerHTML = `<div><span class="text-gray-500 mr-2">[${ora}]</span><span class="text-gray-200">${item.nome}</span><br><span class="text-gray-400 font-bold">${item.quantita}</span></div><button onclick="rimuovi('${item.id}')" class="text-red-500 border border-red-800 px-2 py-1 rounded">Elimina</button>`;
+                listaLog.appendChild(li);
+            });
+        }
+
+        window.rimuovi = async (id) => {
+            await supabase.from('registrazioni').delete().eq('id', id);
+            await caricaDati();
+        };
+
+        document.getElementById('btn-sigaretta').onclick = () => registraDato("Sigaretta", "1 unità");
+        document.getElementById('btn-alcolico').onclick = () => {
+            const cat = DataCore.categorieAlcolici.find(c => c.id === document.getElementById('select-alcolico').value);
+            const massa = (cat.volume_ml * (cat.abv / 100) * 0.789).toFixed(2);
+            registraDato(cat.nome, `${cat.volume_ml}ml | ${cat.abv}% | ${massa}g`);
+        };
+
+        // AVVIO SEQUENZIALE
+        document.addEventListener('DOMContentLoaded', () => {
+            inizializzaUI();
+            connettiCloud();
+        });
     </script>
 </body>
 </html>
