@@ -3,38 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminale Operativo v2.1</title>
+    <title>Executive Monitor v3.5</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
 </head>
-<body class="bg-gray-900 text-gray-200 p-4 font-mono text-sm">
-    <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-2xl p-5 border border-gray-700">
-        <h1 class="text-xl font-bold mb-4 text-white border-b border-gray-600 pb-2 uppercase tracking-tighter">Hub Monitoraggio Cloud</h1>
-        
-        <!-- DEBUG CONSOLE: Fondamentale per capire l'errore -->
-        <div id="debug-info" class="bg-black text-yellow-500 p-2 text-[10px] mb-4 border border-yellow-900 rounded hidden"></div>
+<body class="bg-[#0f172a] text-slate-200 min-h-screen p-4 md:p-8 custom-scrollbar">
+    <div class="max-w-2xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-end border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white uppercase">Personal Health <span class="text-blue-500">Analytics</span></h1>
+                <p class="text-xs text-slate-500 font-medium tracking-widest uppercase mt-1">Status: Sincronizzazione Cloud Attiva</p>
+            </div>
+            <div id="status-cloud" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)] animate-pulse"></div>
+        </header>
 
-        <div class="space-y-4">
-            <section class="p-4 bg-gray-700/50 rounded border border-gray-600">
-                <h2 class="text-xs font-bold mb-3 text-gray-400 uppercase">Tabacco</h2>
-                <button id="btn-sigaretta" class="w-full bg-red-800 active:scale-95 text-white font-bold py-3 rounded border border-red-600 shadow-lg">REGISTRA SIGARETTA</button>
+        <!-- Registrazione Rapida -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <section class="glass-card p-6 rounded-2xl border border-slate-700/50 shadow-2xl">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Sezione Tabacco</h2>
+                <button id="btn-sigaretta" class="w-full bg-gradient-to-br from-rose-700 to-rose-900 hover:from-rose-600 hover:to-rose-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 border border-rose-500/30">
+                    REGISTRA SIGARETTA
+                </button>
             </section>
 
-            <section class="p-4 bg-gray-700/50 rounded border border-gray-600">
-                <h2 class="text-xs font-bold mb-3 text-gray-400 uppercase">Alcolici</h2>
-                <select id="select-alcolico" class="w-full mb-3 bg-gray-900 text-white border border-gray-500 rounded p-3 focus:ring-1 focus:ring-blue-500 outline-none">
-                    <option value="">Caricamento...</option>
+            <section class="glass-card p-6 rounded-2xl border border-slate-700/50 shadow-2xl">
+                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Sezione Alcolici</h2>
+                <select id="select-alcolico" class="w-full mb-3 bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-600 outline-none text-slate-300">
                 </select>
-                <button id="btn-alcolico" class="w-full bg-blue-800 active:scale-95 text-white font-bold py-3 rounded border border-blue-600 shadow-lg">REGISTRA ALCOLICO</button>
+                <button id="btn-alcolico" class="w-full bg-gradient-to-br from-blue-700 to-blue-900 hover:from-blue-600 hover:to-blue-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 border border-blue-500/30 text-xs">
+                    REGISTRA CONSUMAZIONE
+                </button>
             </section>
         </div>
 
-        <div class="mt-6 bg-gray-900 p-4 rounded border border-gray-700">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-xs font-bold text-gray-500 uppercase">Log Recenti</h2>
-                <div id="status-cloud" class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+        <!-- Analitica e Log -->
+        <div class="glass-card rounded-2xl border border-slate-700/50 overflow-hidden shadow-2xl">
+            <nav class="flex bg-slate-800/50 p-1">
+                <button onclick="switchView('live')" id="tab-live" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
+                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Giornaliero</button>
+                <button onclick="switchView('settimane')" id="tab-settimane" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Settimanale</button>
+                <button onclick="switchView('mesi')" id="tab-mesi" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Mensile</button>
+            </nav>
+
+            <div class="p-5 min-h-[400px]">
+                <div id="loader" class="hidden flex justify-center items-center py-20">
+                    <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <ul id="log-lista" class="space-y-4"></ul>
             </div>
-            <ul id="log-lista" class="space-y-3"></ul>
         </div>
     </div>
 
@@ -46,79 +71,143 @@
 
         const BEVANDE = [
             { id: "b1", n: "Birra Piccola", v: 200, a: 5.0 },
-            { id: "b2", n: "Birra Bott. 330", v: 330, a: 5.0 },
+            { id: "b2", n: "Birra Bottiglia 33cl", v: 330, a: 5.0 },
             { id: "b3", n: "Birra Media", v: 400, a: 5.0 },
-            { id: "b4", n: "Birra Bott. 660", v: 660, a: 5.0 },
+            { id: "b4", n: "Birra Bottiglia 66cl", v: 660, a: 5.0 },
             { id: "v1", n: "Vino Calice", v: 150, a: 12.0 },
             { id: "v2", n: "Vino Bottiglia", v: 750, a: 12.0 },
-            { id: "a1", n: "Amaro", v: 60, a: 30.0 },
-            { id: "s1", n: "Shot", v: 40, a: 40.0 },
-            { id: "c1", n: "Cocktail", v: 200, a: 15.0 }
+            { id: "a1", n: "Amaro / Digestivo", v: 60, a: 30.0 },
+            { id: "s1", n: "Shot / Superalcolico", v: 40, a: 40.0 },
+            { id: "c1", n: "Cocktail Standard", v: 200, a: 15.0 }
         ];
 
         let sb = null;
+        let currentView = 'live';
+        let rawData = [];
 
-        function debug(msg) {
-            const d = document.getElementById('debug-info');
-            d.classList.remove('hidden');
-            d.innerHTML += `> ${msg}<br>`;
-        }
-
-        // 1. POPOLAMENTO ISTANTANEO UI
-        function setupUI() {
-            const sel = document.getElementById('select-alcolico');
-            sel.innerHTML = '';
-            BEVANDE.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.textContent = `${b.n} (${b.v}ml)`;
-                sel.appendChild(opt);
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('[id^="tab-"]').forEach(t => {
+                t.classList.remove('bg-blue-600', 'text-white');
+                t.classList.add('text-slate-400');
             });
-            debug("UI Inizializzata");
+            document.getElementById(`tab-${view}`).classList.add('bg-blue-600', 'text-white');
+            render();
         }
 
-        // 2. CONNESSIONE CLOUD
+        function getDeltaConfig(ms) {
+            const mins = ms / 60000;
+            if (mins < 90) return { label: "Critico", color: "text-rose-500" };
+            if (mins < 180) return { label: "Moderato", color: "text-amber-500" };
+            return { label: "Ottimale", color: "text-emerald-500" };
+        }
+
+        function formatDelta(ms) {
+            const mins = Math.floor(ms / 60000);
+            const hrs = Math.floor(mins / 60);
+            return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+        }
+
         async function connect() {
             try {
-                if (typeof supabase === 'undefined') throw new Error("Libreria Supabase mancante");
                 sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
-                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-green-600');
-                debug("Cloud Connesso");
+                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
+                document.getElementById('status-cloud').classList.add('shadow-[0_0_10px_rgba(16,185,129,0.5)]');
                 await refresh();
-            } catch (e) {
-                debug("ERRORE: " + e.message);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function refresh() {
-            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(20);
-            if (error) debug("Refresh Error: " + error.message);
-            render(data || []);
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(200);
+            if (!error) { rawData = data; render(); }
+            loader.classList.add('hidden');
         }
 
         async function add(nome, qta) {
-            debug(`Inserimento: ${nome}...`);
-            const { error } = await sb.from('registrazioni').insert([{ nome, quantita: qta }]);
-            if (error) alert("Errore: " + error.message);
+            await sb.from('registrazioni').insert([{ nome, quantita: qta }]);
             await refresh();
         }
 
-        function render(items) {
+        function render() {
             const list = document.getElementById('log-lista');
             list.innerHTML = '';
-            items.forEach(i => {
-                const time = new Date(i.created_at).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+            currentView === 'live' ? renderLive(list) : renderGrouped(list);
+        }
+
+        function renderLive(list) {
+            const categories = { 'Sigaretta': null, 'Alcohol': null };
+            const processed = [...rawData].reverse().map(item => {
+                const catKey = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
+                const currentTs = new Date(item.created_at).getTime();
+                const delta = categories[catKey] ? currentTs - categories[catKey] : null;
+                categories[catKey] = currentTs;
+                return { ...item, delta };
+            }).reverse();
+
+            processed.forEach(i => {
+                const dt = new Date(i.created_at);
+                const dConfig = i.delta ? getDeltaConfig(i.delta) : null;
                 const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-gray-800/50 p-2 rounded border border-gray-700";
-                li.innerHTML = `<div><p class="text-[10px] text-gray-500">${time}</p><p class="text-white font-bold">${i.nome}</p><p class="text-[10px] text-gray-400">${i.quantita}</p></div>
-                                <button onclick="del('${i.id}')" class="text-red-500 text-[10px] border border-red-900 px-2 py-1 rounded">ELIMINA</button>`;
+                li.className = "flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-all";
+                li.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mb-1">${dt.toLocaleDateString('it-IT')} — ${dt.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</span>
+                        <span class="text-sm font-bold text-white uppercase tracking-tight">${i.nome}</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">${i.quantita}</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        ${i.delta ? `<span class="text-[10px] font-black ${dConfig.color} uppercase tracking-widest">${dConfig.label} Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase">Prima Sessione</span>'}
+                        <button onclick="del('${i.id}')" class="mt-3 text-[9px] font-bold text-rose-500/50 hover:text-rose-500 border border-rose-500/20 hover:border-rose-500 px-3 py-1 rounded-md transition-all uppercase">Rimuovi</button>
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderGrouped(list) {
+            const groups = {};
+            rawData.forEach(i => {
+                const d = new Date(i.created_at);
+                let key;
+                if (currentView === 'giorni') key = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'short' });
+                else if (currentView === 'settimane') {
+                    const first = new Date(d.setDate(d.getDate() - d.getDay() + 1));
+                    key = `Settimana ${first.toLocaleDateString('it-IT')}`;
+                } else key = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+
+                if (!groups[key]) groups[key] = { sig: 0, alc: 0 };
+                if (i.nome === "Sigaretta") groups[key].sig++;
+                else {
+                    const match = i.quantita.match(/(\d+\.\d+)g/);
+                    if (match) groups[key].alc += parseFloat(match[1]);
+                }
+            });
+
+            Object.keys(groups).forEach(k => {
+                const li = document.createElement('li');
+                li.className = "p-5 bg-slate-800/60 rounded-xl border-l-4 border-blue-600 shadow-sm";
+                li.innerHTML = `
+                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">${k}</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-900/50 p-2 rounded-lg text-center">
+                            <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Sigarette</p>
+                            <p class="text-lg font-bold text-white">${groups[k].sig}</p>
+                        </div>
+                        <div class="bg-slate-900/50 p-2 rounded-lg text-center">
+                            <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Etanolo (g)</p>
+                            <p class="text-lg font-bold text-white">${groups[k].alc.toFixed(1)}</p>
+                        </div>
+                    </div>`;
                 list.appendChild(li);
             });
         }
 
         window.del = async (id) => {
-            await sb.from('registrazioni').delete().eq('id', id);
-            await refresh();
+            if(confirm("Questa azione rimuoverà il record dal database. Conferma?")) {
+                await sb.from('registrazioni').delete().eq('id', id);
+                await refresh();
+            }
         };
 
         document.getElementById('btn-sigaretta').onclick = () => add("Sigaretta", "1 unità");
@@ -129,8 +218,14 @@
         };
 
         window.onload = () => {
-            setupUI();
-            setTimeout(connect, 500); // Ritardo per permettere il caricamento delle librerie
+            const sel = document.getElementById('select-alcolico');
+            BEVANDE.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = `${b.n} (${b.v}ml)`;
+                sel.appendChild(opt);
+            });
+            connect();
         };
     </script>
 </body>
