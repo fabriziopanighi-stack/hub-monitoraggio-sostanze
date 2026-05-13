@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Analytics v4.5</title>
+    <title>Executive Health Monitor v4.6</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,47 +11,47 @@
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(71, 85, 105, 0.3); }
         .stat-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(51, 65, 85, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen p-4 md:p-8">
+<body class="text-slate-200 min-h-screen p-4 md:p-8 custom-scrollbar">
     <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <header class="mb-8 flex justify-between items-start border-b border-slate-700 pb-6">
+        <header class="mb-6 flex justify-between items-start border-b border-slate-700 pb-6">
             <div>
                 <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">Health <span class="text-blue-500">Intelligence</span></h1>
                 <p id="system-date" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1"></p>
             </div>
-            <div id="status-cloud" class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+            <div id="status-cloud" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]"></div>
         </header>
-</header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="stat-card p-4 rounded-xl border-l-2 border-emerald-500">
+            <div class="stat-card p-4 rounded-xl border-l-2 border-emerald-500 shadow-lg">
                 <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Timer Attività</p>
-                <div class="flex justify-between text-[11px]">
+                <div class="flex justify-between text-[11px] mb-1">
                     <span class="text-slate-400 uppercase">Ultima Sigaretta:</span>
                     <span id="timer-sigaretta" class="font-bold text-white">--:--</span>
                 </div>
-                <div class="flex justify-between text-[11px] mt-1">
+                <div class="flex justify-between text-[11px]">
                     <span class="text-slate-400 uppercase">Ultimo Alcolico:</span>
                     <span id="timer-alcolico" class="font-bold text-white">--:--</span>
                 </div>
             </div>
-            <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Analisi Alcolemica (BAC)</p>
-                <div class="flex justify-between text-[11px]">
+            <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500 shadow-lg">
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Stima Alcolemica (BAC)</p>
+                <div class="flex justify-between text-[11px] mb-1">
                     <span class="text-slate-400 uppercase">Tasso Stimato:</span>
                     <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
                 </div>
-                <div class="flex justify-between text-[11px] mt-1">
-                    <span class="text-slate-400 uppercase">Rientro Limite (0.5):</span>
-                    <span id="bac-wait-time" class="font-bold text-emerald-500">Idoneo alla guida</span>
+                <div class="flex justify-between text-[11px]">
+                    <span class="text-slate-400 uppercase">Guida:</span>
+                    <span id="bac-wait-time" class="font-bold text-emerald-500">Idoneo</span>
                 </div>
-                <p class="text-[7px] text-slate-500 mt-2 italic">*Stima indicativa (Fonte: CNESPS)</p>
             </div>
         </div>
-        <!-- Intelligence Dashboard -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="stat-card p-4 rounded-xl">
                 <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Risparmio Settimanale</p>
                 <p id="saving-week" class="text-xl font-bold text-white">€ 0.00</p>
@@ -61,12 +61,11 @@
                 <p id="saving-year" class="text-xl font-bold text-white">€ 0.00</p>
             </div>
             <div class="stat-card p-4 rounded-xl">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Status Biologico</p>
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Status Rigenerazione</p>
                 <p id="health-milestone" class="text-[10px] font-medium text-slate-300 leading-tight italic">Analisi in corso...</p>
             </div>
         </div>
 
-        <!-- Inserimento Rapido -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <button id="btn-sigaretta" class="bg-gradient-to-br from-rose-700 to-rose-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs border border-rose-500/30">Log Sigaretta</button>
             <div class="flex flex-col gap-2">
@@ -75,7 +74,6 @@
             </div>
         </div>
 
-        <!-- Log & Analytics -->
         <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
             <nav class="flex bg-slate-800/40 p-1">
                 <button onclick="switchView('live')" id="tab-live" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
@@ -92,7 +90,8 @@
         const CONFIG = {
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
-            BASELINE_SPESA: 124.50 
+            BASELINE_SPESA: 124.50,
+            PROFILE: { peso: 60, burn_rate: 0.15, limit_bac: 0.5 }
         };
 
         const BEVANDE = [
@@ -126,59 +125,23 @@
 
         function getHealthInsight(ms) {
             const mins = ms / 60000;
-            if (mins < 20) return "Normalizzazione battito cardiaco in corso.";
-            if (mins < 720) return "Livelli di CO nel sangue tornano alla normalità.";
-            if (mins < 2880) return "Regenerazione terminazioni nervose (Gusto/Olfatto).";
-            return "Capacità polmonare e circolazione in netto miglioramento.";
-        }
-const PROFILE = {
-            sesso: 'uomo',
-            peso: 60,
-            altezza: 1.78,
-            nascita: new Date('1992-07-12'),
-            limit_bac: 0.5,
-            burn_rate: 0.15 
-        };
-
-        function updateBiometrics() {
-            if (rawData.length === 0) return;
-            let lastSig = rawData.find(i => i.nome === "Sigaretta");
-            let lastAlc = rawData.find(i => i.nome !== "Sigaretta");
-            if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
-            if (lastAlc) {
-                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(lastAlc.created_at).getTime());
-                calculateBAC(lastAlc);
-            }
+            if (mins < 20) return "Battito cardiaco in stabilizzazione.";
+            if (mins < 720) return "Livelli di CO nel sangue normalizzati.";
+            if (mins < 2880) return "Rigenerazione dei recettori sensoriali.";
+            return "Funzionalità polmonare in netto recupero.";
         }
 
-        function calculateBAC(ultimoAlcolico) {
-            const oreTrascorse = (Date.now() - new Date(ultimoAlcolico.created_at).getTime()) / 3600000;
-            const match = ultimoAlcolico.quantita.match(/(\d+\.\d+)g/);
-            if (!match) return;
-            const bacPerGrammo = 0.0154; 
-            let bacStimato = (parseFloat(match[1]) * bacPerGrammo) - (oreTrascorse * PROFILE.burn_rate);
-            bacStimato = Math.max(0, bacStimato);
-            document.getElementById('bac-value').innerText = `${bacStimato.toFixed(2)} g/l`;
-            const waitEl = document.getElementById('bac-wait-time');
-            if (bacStimato > PROFILE.limit_bac) {
-                const minAttesa = Math.ceil(((bacStimato - PROFILE.limit_bac) / PROFILE.burn_rate) * 60);
-                waitEl.innerText = `~ ${minAttesa} min alla guida`;
-                waitEl.className = "font-bold text-rose-500 animate-pulse";
-            } else {
-                waitEl.innerText = "Idoneo alla guida";
-                waitEl.className = "font-bold text-emerald-500";
-            }
-        }
-
-        async function connect() { // ... restate del codice ...
         async function connect() {
-            sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
-            await refresh();
+            try {
+                sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
+                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
+                await refresh();
+            } catch (e) { console.error("Errore connessione:", e); }
         }
 
         async function refresh() {
             const loader = document.getElementById('loader');
-            loader.classList.remove('hidden');
+            if(loader) loader.classList.remove('hidden');
             const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(300);
             if (!error) {
                 rawData = data;
@@ -186,12 +149,15 @@ const PROFILE = {
                 updateBiometrics();
                 render();
             }
-            loader.classList.add('hidden');
+            if(loader) loader.classList.add('hidden');
         }
 
         function updateAnalytics() {
+            if (rawData.length === 0) return;
             const ora = new Date();
-            const inizioSettimana = new Date(ora.setDate(ora.getDate() - ora.getDay() + 1)).setHours(0,0,0,0);
+            const day = ora.getDay();
+            const diffDays = day === 0 ? -6 : 1 - day;
+            const inizioSettimana = new Date(new Date().setDate(ora.getDate() + diffDays)).setHours(0,0,0,0);
             
             let spesaSettimanale = 0;
             rawData.filter(i => new Date(i.created_at) >= inizioSettimana).forEach(i => {
@@ -206,9 +172,38 @@ const PROFILE = {
             document.getElementById('saving-week').innerText = `€ ${risparmioSett.toFixed(2)}`;
             document.getElementById('saving-year').innerText = `€ ${(risparmioSett * 52.14).toFixed(2)}`;
 
-            if (rawData.length > 0) {
-                const diff = Date.now() - new Date(rawData[0].created_at).getTime();
-                document.getElementById('health-milestone').innerText = getHealthInsight(diff);
+            const diffHealth = Date.now() - new Date(rawData[0].created_at).getTime();
+            document.getElementById('health-milestone').innerText = getHealthInsight(diffHealth);
+        }
+
+        function updateBiometrics() {
+            if (rawData.length === 0) return;
+            const lastSig = rawData.find(i => i.nome === "Sigaretta");
+            const lastAlc = rawData.find(i => i.nome !== "Sigaretta");
+
+            if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
+            if (lastAlc) {
+                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(lastAlc.created_at).getTime());
+                calculateBAC(lastAlc);
+            }
+        }
+
+        function calculateBAC(ultimo) {
+            const ore = (Date.now() - new Date(ultimo.created_at).getTime()) / 3600000;
+            const match = ultimo.quantita.match(/(\d+\.\d+)g/);
+            if (!match) return;
+            const bacInit = parseFloat(match[1]) * 0.0154;
+            let bacAttuale = Math.max(0, bacInit - (ore * CONFIG.PROFILE.burn_rate));
+            
+            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
+            const waitEl = document.getElementById('bac-wait-time');
+            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+                waitEl.innerText = `Attesa: ${min}m`;
+                waitEl.className = "font-bold text-rose-500 animate-pulse";
+            } else {
+                waitEl.innerText = "Idoneo";
+                waitEl.className = "font-bold text-emerald-500";
             }
         }
 
@@ -237,8 +232,8 @@ const PROFILE = {
                             <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
                         </div>
                         <div class="flex flex-col items-end">
-                            ${i.delta ? `<span class="text-[9px] font-black ${dConfig.color} uppercase tracking-widest">Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase italic">Sessione Start</span>'}
-                            <button onclick="del('${i.id}')" class="mt-2 text-rose-500/50 text-[9px] font-bold uppercase tracking-widest p-2">Elimina</button>
+                            ${i.delta ? `<span class="text-[9px] font-black ${dConfig.color} uppercase tracking-widest">Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase italic">Start</span>'}
+                            <button onclick="del('${i.id}')" class="mt-2 text-rose-500/50 text-[9px] font-bold uppercase p-2">Elimina</button>
                         </div>`;
                     list.appendChild(li);
                 });
@@ -258,7 +253,7 @@ const PROFILE = {
             }
         }
 
-        window.del = async (id) => { if(confirm("Conferma?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
+        window.del = async (id) => { if(confirm("Conferma rimozione?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
         document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
         document.getElementById('btn-alcolico').onclick = async () => {
             const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
