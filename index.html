@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminale di Tracciamento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-200 p-6 font-mono">
+    <div class="max-w-lg mx-auto bg-gray-800 rounded-lg shadow-xl p-6 border border-gray-700">
+        <h1 class="text-2xl font-bold mb-6 text-white border-b border-gray-600 pb-2">Terminale Registrazione</h1>
+        
+        <!-- Macro-Categoria: Tabacco -->
+        <div class="mb-6 p-4 bg-gray-700 rounded border border-gray-600">
+            <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Tabacco</h2>
+            <button id="btn-sigaretta" class="w-full bg-red-800 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-red-600 shadow-md">
+                Registra 1 Sigaretta
+            </button>
+        </div>
+
+        <!-- Macro-Categoria: Alcolici -->
+        <div class="mb-8 p-4 bg-gray-700 rounded border border-gray-600">
+            <h2 class="text-lg font-semibold mb-3 text-gray-300">Macro-Categoria: Alcolici</h2>
+            <select id="select-alcolico" class="w-full mb-4 bg-gray-900 text-white border border-gray-500 rounded p-3 focus:outline-none focus:border-blue-500">
+                <!-- Opzioni iniettate dal motore logico -->
+            </select>
+            <button id="btn-alcolico" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded transition duration-200 border border-blue-600 shadow-md">
+                Registra Alcolico
+            </button>
+        </div>
+
+        <!-- Log Odierno -->
+        <div class="bg-gray-900 p-4 rounded border border-gray-700">
+            <h2 class="text-lg font-semibold mb-3 text-gray-400">Log Sistema</h2>
+            <ul id="log-lista" class="space-y-2 text-sm"></ul>
+        </div>
+    </div>
+
+    <script>
+        // MOTORE DATI (Logica & Persistenza)
+        const DataCore = {
+            categorieAlcolici: [
+                { id: "birra_piccola", nome: "Birra Piccola", volume_ml: 200, abv: 5.0 },
+                { id: "birra_bottiglia_330", nome: "Birra Bott. 330", volume_ml: 330, abv: 5.0 },
+                { id: "birra_media", nome: "Birra Media", volume_ml: 400, abv: 5.0 },
+                { id: "birra_bottiglia_660", nome: "Birra Bott. 660", volume_ml: 660, abv: 5.0 },
+                { id: "vino_calice", nome: "Vino Calice", volume_ml: 150, abv: 12.0 },
+                { id: "vino_bottiglia", nome: "Vino Bottiglia", volume_ml: 750, abv: 12.0 },
+                { id: "amaro_bicchiere", nome: "Amaro/Digestivo", volume_ml: 60, abv: 30.0 },
+                { id: "shot", nome: "Shot", volume_ml: 40, abv: 40.0 },
+                { id: "cocktail", nome: "Cocktail", volume_ml: 200, abv: 15.0 }
+            ],
+            registro: [],
+
+            // Inizializzazione e recupero dati da LocalStorage
+            inizializza() {
+                const datiSalvati = localStorage.getItem('hub_monitoraggio_sostanze');
+                if (datiSalvati) {
+                    this.registro = JSON.parse(datiSalvati);
+                }
+                return this.registro;
+            },
+
+            // Salvataggio su LocalStorage
+            salvaStato() {
+                localStorage.setItem('hub_monitoraggio_sostanze', JSON.stringify(this.registro));
+            },
+
+            registraTabacco() {
+                const dato = {
+                    id: Date.now().toString(), // ID univoco per la rimozione
+                    timestamp: new Date().toISOString(),
+                    nome: "Sigaretta",
+                    quantita: "1 unità"
+                };
+                this.registro.push(dato);
+                this.salvaStato();
+                return this.registro;
+            },
+
+            registraAlcolico(idCategoria) {
+                const categoria = this.categorieAlcolici.find(c => c.id === idCategoria);
+                if (!categoria) return false;
+
+                // Calcolo massa alcolica: Volume * (ABV/100) * Densità Etanolo (0.789)
+                const massaAlcolica = (categoria.volume_ml * (categoria.abv / 100) * 0.789).toFixed(2);
+
+                const dato = {
+                    id: Date.now().toString(), // ID univoco per la rimozione
+                    timestamp: new Date().toISOString(),
+                    nome: categoria.nome,
+                    quantita: `${categoria.volume_ml}ml | ${categoria.abv}% ABV | ${massaAlcolica}g`
+                };
+                this.registro.push(dato);
+                this.salvaStato();
+                return this.registro;
+            },
+
+            rimuoviRecord(idRecord) {
+                this.registro = this.registro.filter(item => item.id !== idRecord);
+                this.salvaStato();
+                return this.registro;
+            }
+        };
+
+        // MANIPOLAZIONE DOM (Interfaccia)
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectAlcolico = document.getElementById('select-alcolico');
+            const btnSigaretta = document.getElementById('btn-sigaretta');
+            const btnAlcolico = document.getElementById('btn-alcolico');
+            const listaLog = document.getElementById('log-lista');
+
+            // Inizializzazione tendina alcolici
+            DataCore.categorieAlcolici.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = `${cat.nome} (${cat.volume_ml}ml - ${cat.abv}%)`;
+                selectAlcolico.appendChild(option);
+            });
+
+            // Caricamento dati iniziali
+            const datiIniziali = DataCore.inizializza();
+            aggiornaLogVisivo(datiIniziali);
+
+            // Trigger Inserimento Tabacco
+            btnSigaretta.onclick = () => {
+                const datiAggiornati = DataCore.registraTabacco();
+                aggiornaLogVisivo(datiAggiornati);
+            };
+
+            // Trigger Inserimento Alcolici
+            btnAlcolico.onclick = () => {
+                const idSelezionato = selectAlcolico.value;
+                const datiAggiornati = DataCore.registraAlcolico(idSelezionato);
+                if (datiAggiornati) aggiornaLogVisivo(datiAggiornati);
+            };
+
+            // Rendering del Log con funzione di eliminazione
+            function aggiornaLogVisivo(dati) {
+                listaLog.innerHTML = '';
+                
+                // Creazione array inverso per mostrare l'ultimo inserimento in alto
+                [...dati].reverse().forEach(item => {
+                    const li = document.createElement('li');
+                    
+                    // Formattazione data e ora
+                    const dataObj = new Date(item.timestamp);
+                    const dataFormattata = dataObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+                    const oraFormattata = dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                    
+                    li.className = "flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-800 pb-2 mb-2";
+                    
+                    li.innerHTML = `
+                        <div class="flex flex-col">
+                            <span class="text-gray-200">
+                                <span class="text-gray-500 text-xs mr-2">[${dataFormattata} ${oraFormattata}]</span>
+                                ${item.nome}
+                            </span>
+                            <span class="text-gray-400 font-bold text-xs mt-1">${item.quantita}</span>
+                        </div>
+                        <button onclick="richiediRimozione('${item.id}')" class="mt-2 sm:mt-0 text-red-500 hover:text-red-400 text-xs font-bold px-2 py-1 border border-red-800 rounded hover:bg-gray-800 transition">
+                            Rimuovi
+                        </button>
+                    `;
+                    listaLog.appendChild(li);
+                });
+            }
+
+            // Funzione globale per il bottone di rimozione
+            window.richiediRimozione = function(id) {
+                const datiAggiornati = DataCore.rimuoviRecord(id);
+                aggiornaLogVisivo(datiAggiornati);
+            };
+        });
+    </script>
+</body>
+</html>
