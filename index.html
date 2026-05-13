@@ -1,12 +1,10 @@
-// === DATI SUPABASE ===
-const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co'; 
-const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
+<!DOCTYPE html>
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terminale Cloud - Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Libreria Supabase corretta -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-gray-200 p-6 font-mono">
@@ -37,9 +35,9 @@ const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
     </div>
 
     <script>
-        // === DATI SUPABASE ===
-        const SUPABASE_URL = 'INSERISCA_QUI_IL_SUO_URL'; 
-        const SUPABASE_ANON_KEY = 'INSERISCA_QUI_LA_SUA_CHIAVE_ANON';
+        // === DATI ESTRATTI DA IMMAGINE 1000035869.jpg ===
+        const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
 
         let supabase;
 
@@ -58,7 +56,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
         };
 
         async function inizializzaSistema() {
-            // Verifica caricamento libreria
             if (typeof window.supabase === 'undefined') {
                 console.error("Libreria Supabase non caricata.");
                 return;
@@ -71,7 +68,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
             const btnAlcolico = document.getElementById('btn-alcolico');
             const loader = document.getElementById('loader');
 
-            // Popolamento tendina
             DataCore.categorieAlcolici.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
