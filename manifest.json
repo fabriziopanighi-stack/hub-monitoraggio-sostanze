@@ -1,0 +1,17 @@
+{
+  "name": "Executive Health Monitor",
+  "short_name": "HealthHub",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Terminale professionale per il monitoraggio analitico delle sostanze.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2424/2424521.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
