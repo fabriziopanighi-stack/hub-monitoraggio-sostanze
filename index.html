@@ -3,70 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Monitor v3.5</title>
+    <title>Executive Health Monitor v4.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Configurazione PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
-
-<!-- Ottimizzazione iOS (Apple) -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HealthHub">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2424/2424521.png">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(71, 85, 105, 0.3); }
+        .stat-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(51, 65, 85, 0.5); }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 min-h-screen p-4 md:p-8 custom-scrollbar">
+<body class="text-slate-200 min-h-screen p-4 md:p-8">
     <div class="max-w-2xl mx-auto">
-        <!-- Header -->
-        <header class="mb-8 flex justify-between items-end border-b border-slate-700 pb-4">
+        <!-- Header & Executive Summary -->
+        <header class="mb-8 flex justify-between items-start border-b border-slate-700 pb-6">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-white uppercase">Personal Health <span class="text-blue-500">Analytics</span></h1>
-                <p class="text-xs text-slate-500 font-medium tracking-widest uppercase mt-1">Status: Sincronizzazione Cloud Attiva</p>
+                <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">System <span class="text-blue-500">Integrity</span></h1>
+                <p id="system-date" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1"></p>
             </div>
-            <div id="status-cloud" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)] animate-pulse"></div>
+            <div class="text-right">
+                <div id="status-cloud" class="inline-block w-2 h-2 rounded-full bg-red-600 mb-1"></div>
+                <p class="text-[9px] text-slate-500 font-bold uppercase">Cloud Sync</p>
+            </div>
         </header>
 
-        <!-- Registrazione Rapida -->
+        <!-- Financial & Health Dashboard -->
+        <div class="grid grid-cols-2 gap-4 mb-10">
+            <div class="stat-card p-4 rounded-xl shadow-inner">
+                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Risparmio Settimanale</p>
+                <p id="saving-value" class="text-2xl font-bold text-white">€ 0.00</p>
+                <div class="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                    <div id="saving-bar" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="stat-card p-4 rounded-xl shadow-inner">
+                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Status Rigenerazione</p>
+                <p id="health-milestone" class="text-[11px] font-medium text-slate-300 leading-tight">In attesa di dati...</p>
+            </div>
+        </div>
+
+        <!-- Inserimento Rapido -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <section class="glass-card p-6 rounded-2xl border border-slate-700/50 shadow-2xl">
-                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Sezione Tabacco</h2>
-                <button id="btn-sigaretta" class="w-full bg-gradient-to-br from-rose-700 to-rose-900 hover:from-rose-600 hover:to-rose-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 border border-rose-500/30">
-                    REGISTRA SIGARETTA
+            <section class="glass-card p-6 rounded-2xl shadow-2xl hover:border-rose-500/30 transition-colors">
+                <button id="btn-sigaretta" class="w-full bg-gradient-to-br from-rose-700 to-rose-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs">
+                    Log Sigaretta
                 </button>
             </section>
-
-            <section class="glass-card p-6 rounded-2xl border border-slate-700/50 shadow-2xl">
-                <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Sezione Alcolici</h2>
-                <select id="select-alcolico" class="w-full mb-3 bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-600 outline-none text-slate-300">
-                </select>
-                <button id="btn-alcolico" class="w-full bg-gradient-to-br from-blue-700 to-blue-900 hover:from-blue-600 hover:to-blue-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 border border-blue-500/30 text-xs">
-                    REGISTRA CONSUMAZIONE
+            <section class="glass-card p-6 rounded-2xl shadow-2xl hover:border-blue-500/30 transition-colors">
+                <select id="select-alcolico" class="w-full mb-3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs outline-none text-slate-300"></select>
+                <button id="btn-alcolico" class="w-full bg-gradient-to-br from-blue-700 to-blue-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs">
+                    Log Alcolico
                 </button>
             </section>
         </div>
 
-        <!-- Analitica e Log -->
-        <div class="glass-card rounded-2xl border border-slate-700/50 overflow-hidden shadow-2xl">
-            <nav class="flex bg-slate-800/50 p-1">
-                <button onclick="switchView('live')" id="tab-live" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
-                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Giornaliero</button>
-                <button onclick="switchView('settimane')" id="tab-settimane" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Settimanale</button>
-                <button onclick="switchView('mesi')" id="tab-mesi" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-slate-400">Mensile</button>
+        <!-- Tab Navigation & List -->
+        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
+            <nav class="flex bg-slate-800/40 p-1">
+                <button onclick="switchView('live')" id="tab-live" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
+                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Storico</button>
             </nav>
-
-            <div class="p-5 min-h-[400px]">
-                <div id="loader" class="hidden flex justify-center items-center py-20">
-                    <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
+            <div class="p-5 max-h-[500px] overflow-y-auto custom-scrollbar">
+                <div id="loader" class="hidden text-center py-10"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>
                 <ul id="log-lista" class="space-y-4"></ul>
             </div>
         </div>
@@ -75,165 +73,134 @@
     <script>
         const CONFIG = {
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
-            KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP'
+            KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
+            BASELINE_SPESA: 124.50 // Euro settimanali
         };
 
         const BEVANDE = [
-            { id: "b1", n: "Birra Piccola", v: 200, a: 5.0 },
-            { id: "b2", n: "Birra Bottiglia 33cl", v: 330, a: 5.0 },
-            { id: "b3", n: "Birra Media", v: 400, a: 5.0 },
-            { id: "b4", n: "Birra Bottiglia 66cl", v: 660, a: 5.0 },
-            { id: "v1", n: "Vino Calice", v: 150, a: 12.0 },
-            { id: "v2", n: "Vino Bottiglia", v: 750, a: 12.0 },
-            { id: "a1", n: "Amaro / Digestivo", v: 60, a: 30.0 },
-            { id: "s1", n: "Shot / Superalcolico", v: 40, a: 40.0 },
-            { id: "c1", n: "Cocktail Standard", v: 200, a: 15.0 }
+            { id: "b1", n: "Birra Piccola", v: 200, a: 5.0, c: 3.5 },
+            { id: "b2", n: "Birra Bottiglia 33cl", v: 330, a: 5.0, c: 4.0 },
+            { id: "b3", n: "Birra Media", v: 400, a: 5.0, c: 5.0 },
+            { id: "b4", n: "Birra Bottiglia 66cl", v: 660, a: 5.0, c: 6.0 },
+            { id: "v1", n: "Vino Calice", v: 150, a: 12.0, c: 5.0 },
+            { id: "v2", n: "Vino Bottiglia", v: 750, a: 12.0, c: 18.0 },
+            { id: "a1", n: "Amaro / Digestivo", v: 60, a: 30.0, c: 4.0 },
+            { id: "s1", n: "Shot / Superalcolico", v: 40, a: 40.0, c: 4.0 },
+            { id: "c1", n: "Cocktail", v: 200, a: 15.0, c: 8.0 }
         ];
 
         let sb = null;
-        let currentView = 'live';
         let rawData = [];
+        let currentView = 'live';
 
-        function switchView(view) {
-            currentView = view;
-            document.querySelectorAll('[id^="tab-"]').forEach(t => {
-                t.classList.remove('bg-blue-600', 'text-white');
-                t.classList.add('text-slate-400');
-            });
-            document.getElementById(`tab-${view}`).classList.add('bg-blue-600', 'text-white');
-            render();
-        }
-
-        function getDeltaConfig(ms) {
+        // Health Benchmarks Logic
+        function getHealthInsight(ms) {
             const mins = ms / 60000;
-            if (mins < 90) return { label: "Critico", color: "text-rose-500" };
-            if (mins < 180) return { label: "Moderato", color: "text-amber-500" };
-            return { label: "Ottimale", color: "text-emerald-500" };
-        }
-
-        function formatDelta(ms) {
-            const mins = Math.floor(ms / 60000);
-            const hrs = Math.floor(mins / 60);
-            return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+            if (mins < 20) return "Fase di assunzione attiva. Monitoraggio battito cardiaco.";
+            if (mins < 720) return "Pressione arteriosa in stabilizzazione. CO in calo.";
+            if (mins < 2880) return "Livelli di ossigeno normalizzati. Rigenerazione nervosa.";
+            return "Capacità polmonare in aumento. Detossificazione avanzata.";
         }
 
         async function connect() {
-            try {
-                sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
-                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
-                document.getElementById('status-cloud').classList.add('shadow-[0_0_10px_rgba(16,185,129,0.5)]');
-                await refresh();
-            } catch (e) { console.error(e); }
+            sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
+            document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
+            await refresh();
         }
 
         async function refresh() {
             const loader = document.getElementById('loader');
             loader.classList.remove('hidden');
-            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(200);
-            if (!error) { rawData = data; render(); }
+            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(300);
+            if (!error) {
+                rawData = data;
+                updateStats();
+                render();
+            }
             loader.classList.add('hidden');
         }
 
-        async function add(nome, qta) {
-            await sb.from('registrazioni').insert([{ nome, quantita: qta }]);
-            await refresh();
+        function updateStats() {
+            // Calcolo risparmio settimanale (Lunedì - Oggi)
+            const ora = new Date();
+            const inizioSettimana = new Date(ora.setDate(ora.getDate() - ora.getDay() + 1)).setHours(0,0,0,0);
+            
+            let spesaSettimanale = 0;
+            rawData.filter(i => new Date(i.created_at) >= inizioSettimana).forEach(i => {
+                if (i.nome === "Sigaretta") spesaSettimanale += 0.30;
+                else {
+                    const bevanda = BEVANDE.find(b => b.n === i.nome);
+                    if (bevanda) spesaSettimanale += bevanda.c;
+                }
+            });
+
+            const risparmio = Math.max(0, CONFIG.BASELINE_SPESA - spesaSettimanale);
+            document.getElementById('saving-value').innerText = `€ ${risparmio.toFixed(2)}`;
+            document.getElementById('saving-bar').style.width = `${Math.min(100, (risparmio / CONFIG.BASELINE_SPESA) * 100)}%`;
+
+            // Update Health Milestone basato sull'ultimo record
+            if (rawData.length > 0) {
+                const diff = Date.now() - new Date(rawData[0].created_at).getTime();
+                document.getElementById('health-milestone').innerText = getHealthInsight(diff);
+            }
         }
 
         function render() {
             const list = document.getElementById('log-lista');
             list.innerHTML = '';
-            currentView === 'live' ? renderLive(list) : renderGrouped(list);
-        }
-
-        function renderLive(list) {
-            const categories = { 'Sigaretta': null, 'Alcohol': null };
-            const processed = [...rawData].reverse().map(item => {
-                const catKey = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
-                const currentTs = new Date(item.created_at).getTime();
-                const delta = categories[catKey] ? currentTs - categories[catKey] : null;
-                categories[catKey] = currentTs;
-                return { ...item, delta };
-            }).reverse();
-
-            processed.forEach(i => {
-                const dt = new Date(i.created_at);
-                const dConfig = i.delta ? getDeltaConfig(i.delta) : null;
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-all";
-                li.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mb-1">${dt.toLocaleDateString('it-IT')} — ${dt.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}</span>
-                        <span class="text-sm font-bold text-white uppercase tracking-tight">${i.nome}</span>
-                        <span class="text-[10px] text-slate-400 mt-0.5">${i.quantita}</span>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        ${i.delta ? `<span class="text-[10px] font-black ${dConfig.color} uppercase tracking-widest">${dConfig.label} Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase">Prima Sessione</span>'}
-                        <button onclick="del('${i.id}')" class="mt-3 text-[9px] font-bold text-rose-500/50 hover:text-rose-500 border border-rose-500/20 hover:border-rose-500 px-3 py-1 rounded-md transition-all uppercase">Rimuovi</button>
-                    </div>`;
-                list.appendChild(li);
-            });
-        }
-
-        function renderGrouped(list) {
-            const groups = {};
-            rawData.forEach(i => {
-                const d = new Date(i.created_at);
-                let key;
-                if (currentView === 'giorni') key = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'short' });
-                else if (currentView === 'settimane') {
-                    const first = new Date(d.setDate(d.getDate() - d.getDay() + 1));
-                    key = `Settimana ${first.toLocaleDateString('it-IT')}`;
-                } else key = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-
-                if (!groups[key]) groups[key] = { sig: 0, alc: 0 };
-                if (i.nome === "Sigaretta") groups[key].sig++;
-                else {
-                    const match = i.quantita.match(/(\d+\.\d+)g/);
-                    if (match) groups[key].alc += parseFloat(match[1]);
-                }
-            });
-
-            Object.keys(groups).forEach(k => {
-                const li = document.createElement('li');
-                li.className = "p-5 bg-slate-800/60 rounded-xl border-l-4 border-blue-600 shadow-sm";
-                li.innerHTML = `
-                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">${k}</p>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-slate-900/50 p-2 rounded-lg text-center">
-                            <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Sigarette</p>
-                            <p class="text-lg font-bold text-white">${groups[k].sig}</p>
+            if (currentView === 'live') {
+                rawData.forEach(i => {
+                    const dt = new Date(i.created_at);
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
+                    li.innerHTML = `
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')} — ${dt.toLocaleDateString('it-IT')}</p>
+                            <p class="text-sm font-bold text-white uppercase">${i.nome}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
                         </div>
-                        <div class="bg-slate-900/50 p-2 rounded-lg text-center">
-                            <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Etanolo (g)</p>
-                            <p class="text-lg font-bold text-white">${groups[k].alc.toFixed(1)}</p>
-                        </div>
-                    </div>`;
-                list.appendChild(li);
-            });
-        }
-
-        window.del = async (id) => {
-            if(confirm("Questa azione rimuoverà il record dal database. Conferma?")) {
-                await sb.from('registrazioni').delete().eq('id', id);
-                await refresh();
+                        <button onclick="del('${i.id}')" class="text-rose-500/50 hover:text-rose-500 text-[9px] font-bold uppercase tracking-widest p-2">Rimuovi</button>
+                    `;
+                    list.appendChild(li);
+                });
+            } else {
+                // Semplice aggregazione giornaliera
+                const g = {};
+                rawData.forEach(i => {
+                    const key = new Date(i.created_at).toLocaleDateString('it-IT');
+                    if (!g[key]) g[key] = { s:0, a:0 };
+                    i.nome === "Sigaretta" ? g[key].s++ : g[key].a++;
+                });
+                Object.keys(g).forEach(k => {
+                    const li = document.createElement('li');
+                    li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
+                    li.innerHTML = `<p class="text-[10px] font-black text-blue-400 uppercase mb-2">${k}</p>
+                                    <p class="text-sm text-white font-bold">🚬 ${g[k].s} Unità | 🍷 ${g[k].a} Consumazioni</p>`;
+                    list.appendChild(li);
+                });
             }
-        };
+        }
 
-        document.getElementById('btn-sigaretta').onclick = () => add("Sigaretta", "1 unità");
-        document.getElementById('btn-alcolico').onclick = () => {
+        window.del = async (id) => { if(confirm("Conferma rimozione record?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
+        document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
+        document.getElementById('btn-alcolico').onclick = async () => {
             const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
             const g = (b.v * (b.a / 100) * 0.789).toFixed(2);
-            add(b.n, `${b.v}ml | ${b.a}% | ${g}g`);
+            await sb.from('registrazioni').insert([{ nome: b.n, quantita: `${b.v}ml | ${b.a}% | ${g}g` }]);
+            await refresh();
         };
 
+        function switchView(v) {
+            currentView = v;
+            document.querySelectorAll('[id^="tab-"]').forEach(t => { t.classList.remove('bg-blue-600', 'text-white'); t.classList.add('text-slate-500'); });
+            document.getElementById(`tab-${v}`).classList.add('bg-blue-600', 'text-white');
+            render();
+        }
+
         window.onload = () => {
+            document.getElementById('system-date').innerText = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
             const sel = document.getElementById('select-alcolico');
-            BEVANDE.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.textContent = `${b.n} (${b.v}ml)`;
-                sel.appendChild(opt);
-            });
+            BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
             connect();
         };
     </script>
