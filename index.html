@@ -3,10 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Analytics v4.8</title>
+    <title>Executive Health Analytics v4.9</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HealthHub">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2424/2424521.png">
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(71, 85, 105, 0.3); }
@@ -92,7 +100,12 @@
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
             BASELINE_SPESA: 124.50,
-            PROFILE: { peso: 60, burn_rate: 0.15, limit_bac: 0.5 }
+            PROFILE: { 
+                peso: 60, 
+                burn_rate: 0.15, 
+                limit_bac: 0.5,
+                nascita: new Date('1992-07-12')
+            }
         };
 
         const BEVANDE = [
@@ -113,16 +126,26 @@
 
         const CLINICAL_INSIGHTS = {
             tobacco: [
-                { time: 20, text: "CVS: Pressione e battito in stabilizzazione." },
-                { time: 120, text: "Nicotina: Calo dei livelli ematici. Inizio stress da astinenza fisica." },
-                { time: 720, text: "CO: Il monossido di carbonio è stato quasi totalmente espulso." },
-                { time: 2880, text: "Sensi: Rigenerazione dei recettori del gusto e dell'olfatto." }
+                { time: 0, text: "Fase Acuta: Vasocostrizione periferica istantanea." },
+                { time: 15, text: "Dinamica CVS: Battito cardiaco elevato; il CO si lega all'emoglobina." },
+                { time: 30, text: "Inibizione Ciliare: Ciglia bronchiali paralizzate; blocco clearance muco." },
+                { time: 45, text: "Stress Endoteliale: Inizio micro-infiammazioni delle pareti arteriose." },
+                { time: 60, text: "Metabolismo Nicotinico: Il fegato processa la nicotina; picco di craving." },
+                { time: 90, text: "Recupero Pressorio: La pressione arteriosa scende verso i parametri basali." },
+                { time: 120, text: "Saturazione CO: Il monossido occupa ancora l'8% dell'emoglobina." },
+                { time: 360, text: "Ossigenazione: Incremento della biodisponibilità di ossigeno tessutale." },
+                { time: 720, text: "Epurazione CO: Livelli di monossido tornati alla normalità." },
+                { time: 1440, text: "Riparazione: Inizio rigenerazione dell'epitelio polmonare." }
             ],
             alcohol: [
-                { time: 60, text: "Metabolismo: Picco di assorbimento gastrico. Stress ossidativo epatico." },
-                { time: 480, text: "Etanolo: Conversione in acetaldeide. Il fegato lavora alla massima capacità." },
-                { time: 1440, text: "Neurologico: Soppressione fase REM conclusa. Inizio reidratazione sistemica." },
-                { time: 4320, text: "Organico: Inizio riduzione della steatosi epatica e stress infiammatorio." }
+                { time: 0, text: "Assorbimento: Etanolo nel sangue; irritazione mucosa gastrica." },
+                { time: 20, text: "Picco Glicemico: Alterazione zuccheri e rilascio di dopamina." },
+                { time: 45, text: "Ossidazione Epatica: Conversione etanolo in acetaldeide tossica." },
+                { time: 90, text: "Disidratazione: Inibizione ormone antidiuretico; espulsione liquidi." },
+                { time: 180, text: "Stress Mitocondriale: Carico massimo delle cellule epatiche." },
+                { time: 360, text: "Infiammazione: Sottoprodotti metabolici stressano i vasi sanguigni." },
+                { time: 720, text: "Fase di Rimbalzo: Alterazione fase REM e del sistema GABA." },
+                { time: 1440, text: "Reidratazione: Ripristino equilibrio elettrolitico e idratazione cerebrale." }
             ]
         };
 
@@ -136,11 +159,12 @@
             const mins = ms / 60000;
             const type = item.nome === "Sigaretta" ? 'tobacco' : 'alcohol';
             const stages = CLINICAL_INSIGHTS[type];
-            let insight = stages[0].text;
+            let currentInsight = "Analisi bioscansione...";
             for (let stage of stages) {
-                if (mins >= stage.time) insight = stage.text;
+                if (mins >= stage.time) currentInsight = stage.text;
+                else break;
             }
-            return insight;
+            return currentInsight;
         }
 
         async function connect() {
@@ -148,7 +172,7 @@
                 sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
                 document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
                 await refresh();
-            } catch (e) { console.error("Errore:", e); }
+            } catch (e) { console.error("Errore connessione:", e); }
         }
 
         async function refresh() {
@@ -215,7 +239,7 @@
             const waitEl = document.getElementById('bac-wait-time');
             if (bacTotale > CONFIG.PROFILE.limit_bac) {
                 const min = Math.ceil(((bacTotale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
-                waitEl.innerText = `Alt: ${min}m`;
+                waitEl.innerText = `Attesa: ${min}m`;
                 waitEl.className = "font-bold text-rose-500 animate-pulse";
             } else {
                 waitEl.innerText = "Idoneo";
@@ -226,11 +250,8 @@
         function render() {
             const list = document.getElementById('log-lista');
             list.innerHTML = '';
-            if (currentView === 'live') {
-                renderLive(list);
-            } else {
-                renderGrouped(list, currentView);
-            }
+            if (currentView === 'live') renderLive(list);
+            else renderGrouped(list, currentView);
         }
 
         function renderLive(list) {
@@ -266,9 +287,8 @@
             rawData.forEach(i => {
                 const d = new Date(i.created_at);
                 const key = view === 'giorni' ? d.toLocaleDateString('it-IT') : d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-                if (!groups[key]) groups[key] = { sig: 0, alc: 0, items: [] };
+                if (!groups[key]) groups[key] = { sig: 0, alc: 0 };
                 i.nome === "Sigaretta" ? groups[key].sig++ : groups[key].alc++;
-                groups[key].items.push(i);
             });
 
             const keys = Object.keys(groups);
@@ -278,12 +298,9 @@
                     const prev = groups[keys[idx+1]];
                     const curr = groups[k];
                     const isBetter = curr.sig <= prev.sig && curr.alc <= prev.alc;
-                    const isWorse = curr.sig > prev.sig || curr.alc > prev.alc;
-                    const status = isBetter ? "Miglioramento" : (isWorse ? "Peggioramento" : "Stabile");
                     const color = isBetter ? "text-emerald-500" : "text-rose-500";
-                    trendHtml = `<p class="text-[9px] font-bold ${color} uppercase mt-2">Report Jarvis: ${status}</p>`;
+                    trendHtml = `<p class="text-[9px] font-bold ${color} uppercase mt-2">Report Jarvis: ${isBetter ? 'Miglioramento' : 'Peggioramento'}</p>`;
                 }
-
                 const li = document.createElement('li');
                 li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
                 li.innerHTML = `
@@ -318,6 +335,7 @@
             const sel = document.getElementById('select-alcolico');
             BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
             connect();
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
         };
     </script>
 </body>
