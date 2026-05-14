@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Monitor v4.6</title>
+    <title>Executive Health Monitor v4.7</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -39,7 +39,7 @@
                 </div>
             </div>
             <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500 shadow-lg">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Stima Alcolemica (BAC)</p>
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Stima Alcolemica Cumulativa (BAC)</p>
                 <div class="flex justify-between text-[11px] mb-1">
                     <span class="text-slate-400 uppercase">Tasso Stimato:</span>
                     <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
@@ -91,7 +91,12 @@
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
             BASELINE_SPESA: 124.50,
-            PROFILE: { peso: 60, burn_rate: 0.15, limit_bac: 0.5 }
+            PROFILE: { 
+                peso: 60, 
+                burn_rate: 0.15, 
+                limit_bac: 0.5,
+                nascita: new Date('1992-07-12')
+            }
         };
 
         const BEVANDE = [
@@ -155,6 +160,12 @@
         function updateAnalytics() {
             if (rawData.length === 0) return;
             const ora = new Date();
+            
+            // Calcolo Età Dinamico
+            let eta = ora.getFullYear() - CONFIG.PROFILE.nascita.getFullYear();
+            const m = ora.getMonth() - CONFIG.PROFILE.nascita.getMonth();
+            if (m < 0 || (m === 0 && ora.getDate() < CONFIG.PROFILE.nascita.getDate())) eta--;
+            
             const day = ora.getDay();
             const diffDays = day === 0 ? -6 : 1 - day;
             const inizioSettimana = new Date(new Date().setDate(ora.getDate() + diffDays)).setHours(0,0,0,0);
@@ -179,26 +190,38 @@
         function updateBiometrics() {
             if (rawData.length === 0) return;
             const lastSig = rawData.find(i => i.nome === "Sigaretta");
-            const lastAlc = rawData.find(i => i.nome !== "Sigaretta");
+            const allAlc = rawData.filter(i => i.nome !== "Sigaretta");
 
             if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
-            if (lastAlc) {
-                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(lastAlc.created_at).getTime());
-                calculateBAC(lastAlc);
+            
+            if (allAlc.length > 0) {
+                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(allAlc[0].created_at).getTime());
+                calculateCumulativeBAC(allAlc);
             }
         }
 
-        function calculateBAC(ultimo) {
-            const ore = (Date.now() - new Date(ultimo.created_at).getTime()) / 3600000;
-            const match = ultimo.quantita.match(/(\d+\.\d+)g/);
-            if (!match) return;
-            const bacInit = parseFloat(match[1]) * 0.0154;
-            let bacAttuale = Math.max(0, bacInit - (ore * CONFIG.PROFILE.burn_rate));
+        function calculateCumulativeBAC(consumazioni) {
+            let bacTotale = 0;
+            const oraAttuale = Date.now();
+
+            consumazioni.forEach(item => {
+                const match = item.quantita.match(/(\d+\.\d+)g/);
+                if (match) {
+                    const grammi = parseFloat(match[1]);
+                    const oreTrascorse = (oraAttuale - new Date(item.created_at).getTime()) / 3600000;
+                    
+                    // Contributo iniziale interpolato per 60kg
+                    const bacIniziale = grammi * 0.0154; 
+                    const residuo = Math.max(0, bacIniziale - (oreTrascorse * CONFIG.PROFILE.burn_rate));
+                    
+                    bacTotale += residuo;
+                }
+            });
             
-            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
+            document.getElementById('bac-value').innerText = `${bacTotale.toFixed(2)} g/l`;
             const waitEl = document.getElementById('bac-wait-time');
-            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
-                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+            if (bacTotale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacTotale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
                 waitEl.innerText = `Attesa: ${min}m`;
                 waitEl.className = "font-bold text-rose-500 animate-pulse";
             } else {
