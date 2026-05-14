@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Monitor v4.7</title>
+    <title>Executive Health Analytics v4.8</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -39,7 +39,7 @@
                 </div>
             </div>
             <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500 shadow-lg">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">Stima Alcolemica Cumulativa (BAC)</p>
+                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">BAC Cumulativo</p>
                 <div class="flex justify-between text-[11px] mb-1">
                     <span class="text-slate-400 uppercase">Tasso Stimato:</span>
                     <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
@@ -77,9 +77,10 @@
         <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
             <nav class="flex bg-slate-800/40 p-1">
                 <button onclick="switchView('live')" id="tab-live" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
-                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Storico</button>
+                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Giorni</button>
+                <button onclick="switchView('mesi')" id="tab-mesi" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Mesi</button>
             </nav>
-            <div class="p-5 max-h-[500px] overflow-y-auto custom-scrollbar">
+            <div class="p-5 max-h-[600px] overflow-y-auto custom-scrollbar">
                 <div id="loader" class="hidden text-center py-10"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>
                 <ul id="log-lista" class="space-y-4"></ul>
             </div>
@@ -91,12 +92,7 @@
             URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
             KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
             BASELINE_SPESA: 124.50,
-            PROFILE: { 
-                peso: 60, 
-                burn_rate: 0.15, 
-                limit_bac: 0.5,
-                nascita: new Date('1992-07-12')
-            }
+            PROFILE: { peso: 60, burn_rate: 0.15, limit_bac: 0.5 }
         };
 
         const BEVANDE = [
@@ -115,12 +111,20 @@
         let rawData = [];
         let currentView = 'live';
 
-        function getDeltaConfig(ms) {
-            const mins = ms / 60000;
-            if (mins < 90) return { label: "Critico", color: "text-rose-500" };
-            if (mins < 180) return { label: "Moderato", color: "text-amber-500" };
-            return { label: "Ottimale", color: "text-emerald-500" };
-        }
+        const CLINICAL_INSIGHTS = {
+            tobacco: [
+                { time: 20, text: "CVS: Pressione e battito in stabilizzazione." },
+                { time: 120, text: "Nicotina: Calo dei livelli ematici. Inizio stress da astinenza fisica." },
+                { time: 720, text: "CO: Il monossido di carbonio è stato quasi totalmente espulso." },
+                { time: 2880, text: "Sensi: Rigenerazione dei recettori del gusto e dell'olfatto." }
+            ],
+            alcohol: [
+                { time: 60, text: "Metabolismo: Picco di assorbimento gastrico. Stress ossidativo epatico." },
+                { time: 480, text: "Etanolo: Conversione in acetaldeide. Il fegato lavora alla massima capacità." },
+                { time: 1440, text: "Neurologico: Soppressione fase REM conclusa. Inizio reidratazione sistemica." },
+                { time: 4320, text: "Organico: Inizio riduzione della steatosi epatica e stress infiammatorio." }
+            ]
+        };
 
         function formatDelta(ms) {
             const mins = Math.floor(ms / 60000);
@@ -128,12 +132,15 @@
             return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
         }
 
-        function getHealthInsight(ms) {
+        function getClinicalInsight(item, ms) {
             const mins = ms / 60000;
-            if (mins < 20) return "Battito cardiaco in stabilizzazione.";
-            if (mins < 720) return "Livelli di CO nel sangue normalizzati.";
-            if (mins < 2880) return "Rigenerazione dei recettori sensoriali.";
-            return "Funzionalità polmonare in netto recupero.";
+            const type = item.nome === "Sigaretta" ? 'tobacco' : 'alcohol';
+            const stages = CLINICAL_INSIGHTS[type];
+            let insight = stages[0].text;
+            for (let stage of stages) {
+                if (mins >= stage.time) insight = stage.text;
+            }
+            return insight;
         }
 
         async function connect() {
@@ -141,13 +148,13 @@
                 sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
                 document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
                 await refresh();
-            } catch (e) { console.error("Errore connessione:", e); }
+            } catch (e) { console.error("Errore:", e); }
         }
 
         async function refresh() {
             const loader = document.getElementById('loader');
             if(loader) loader.classList.remove('hidden');
-            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(300);
+            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(400);
             if (!error) {
                 rawData = data;
                 updateAnalytics();
@@ -160,15 +167,7 @@
         function updateAnalytics() {
             if (rawData.length === 0) return;
             const ora = new Date();
-            
-            // Calcolo Età Dinamico
-            let eta = ora.getFullYear() - CONFIG.PROFILE.nascita.getFullYear();
-            const m = ora.getMonth() - CONFIG.PROFILE.nascita.getMonth();
-            if (m < 0 || (m === 0 && ora.getDate() < CONFIG.PROFILE.nascita.getDate())) eta--;
-            
-            const day = ora.getDay();
-            const diffDays = day === 0 ? -6 : 1 - day;
-            const inizioSettimana = new Date(new Date().setDate(ora.getDate() + diffDays)).setHours(0,0,0,0);
+            const inizioSettimana = new Date(new Date().setDate(ora.getDate() - (ora.getDay() || 7) + 1)).setHours(0,0,0,0);
             
             let spesaSettimanale = 0;
             rawData.filter(i => new Date(i.created_at) >= inizioSettimana).forEach(i => {
@@ -183,8 +182,9 @@
             document.getElementById('saving-week').innerText = `€ ${risparmioSett.toFixed(2)}`;
             document.getElementById('saving-year').innerText = `€ ${(risparmioSett * 52.14).toFixed(2)}`;
 
-            const diffHealth = Date.now() - new Date(rawData[0].created_at).getTime();
-            document.getElementById('health-milestone').innerText = getHealthInsight(diffHealth);
+            const lastItem = rawData[0];
+            const diff = Date.now() - new Date(lastItem.created_at).getTime();
+            document.getElementById('health-milestone').innerText = getClinicalInsight(lastItem, diff);
         }
 
         function updateBiometrics() {
@@ -193,7 +193,6 @@
             const allAlc = rawData.filter(i => i.nome !== "Sigaretta");
 
             if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
-            
             if (allAlc.length > 0) {
                 document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(allAlc[0].created_at).getTime());
                 calculateCumulativeBAC(allAlc);
@@ -203,26 +202,20 @@
         function calculateCumulativeBAC(consumazioni) {
             let bacTotale = 0;
             const oraAttuale = Date.now();
-
             consumazioni.forEach(item => {
                 const match = item.quantita.match(/(\d+\.\d+)g/);
                 if (match) {
                     const grammi = parseFloat(match[1]);
-                    const oreTrascorse = (oraAttuale - new Date(item.created_at).getTime()) / 3600000;
-                    
-                    // Contributo iniziale interpolato per 60kg
-                    const bacIniziale = grammi * 0.0154; 
-                    const residuo = Math.max(0, bacIniziale - (oreTrascorse * CONFIG.PROFILE.burn_rate));
-                    
+                    const ore = (oraAttuale - new Date(item.created_at).getTime()) / 3600000;
+                    const residuo = Math.max(0, (grammi * 0.0154) - (ore * CONFIG.PROFILE.burn_rate));
                     bacTotale += residuo;
                 }
             });
-            
             document.getElementById('bac-value').innerText = `${bacTotale.toFixed(2)} g/l`;
             const waitEl = document.getElementById('bac-wait-time');
             if (bacTotale > CONFIG.PROFILE.limit_bac) {
                 const min = Math.ceil(((bacTotale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
-                waitEl.innerText = `Attesa: ${min}m`;
+                waitEl.innerText = `Alt: ${min}m`;
                 waitEl.className = "font-bold text-rose-500 animate-pulse";
             } else {
                 waitEl.innerText = "Idoneo";
@@ -234,49 +227,77 @@
             const list = document.getElementById('log-lista');
             list.innerHTML = '';
             if (currentView === 'live') {
-                const categories = { 'Sigaretta': null, 'Alcohol': null };
-                const processed = [...rawData].reverse().map(item => {
-                    const catKey = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
-                    const currentTs = new Date(item.created_at).getTime();
-                    const delta = categories[catKey] ? currentTs - categories[catKey] : null;
-                    categories[catKey] = currentTs;
-                    return { ...item, delta };
-                }).reverse();
-
-                processed.forEach(i => {
-                    const dt = new Date(i.created_at);
-                    const dConfig = i.delta ? getDeltaConfig(i.delta) : null;
-                    const li = document.createElement('li');
-                    li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
-                    li.innerHTML = `
-                        <div>
-                            <p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')} — ${dt.toLocaleDateString('it-IT')}</p>
-                            <p class="text-sm font-bold text-white uppercase">${i.nome}</p>
-                            <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
-                        </div>
-                        <div class="flex flex-col items-end">
-                            ${i.delta ? `<span class="text-[9px] font-black ${dConfig.color} uppercase tracking-widest">Δ ${formatDelta(i.delta)}</span>` : '<span class="text-[9px] text-slate-600 uppercase italic">Start</span>'}
-                            <button onclick="del('${i.id}')" class="mt-2 text-rose-500/50 text-[9px] font-bold uppercase p-2">Elimina</button>
-                        </div>`;
-                    list.appendChild(li);
-                });
+                renderLive(list);
             } else {
-                const g = {};
-                rawData.forEach(i => {
-                    const key = new Date(i.created_at).toLocaleDateString('it-IT');
-                    if (!g[key]) g[key] = { s:0, a:0 };
-                    i.nome === "Sigaretta" ? g[key].s++ : g[key].a++;
-                });
-                Object.keys(g).forEach(k => {
-                    const li = document.createElement('li');
-                    li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
-                    li.innerHTML = `<p class="text-[10px] font-black text-blue-400 uppercase mb-2">${k}</p><p class="text-sm text-white font-bold">🚬 ${g[k].s} Unità | 🍷 ${g[k].a} Consumazioni</p>`;
-                    list.appendChild(li);
-                });
+                renderGrouped(list, currentView);
             }
         }
 
-        window.del = async (id) => { if(confirm("Conferma rimozione?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
+        function renderLive(list) {
+            const cats = { 'Sigaretta': null, 'Alcohol': null };
+            const processed = [...rawData].reverse().map(item => {
+                const key = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
+                const ts = new Date(item.created_at).getTime();
+                const delta = cats[key] ? ts - cats[key] : null;
+                cats[key] = ts;
+                return { ...item, delta };
+            }).reverse();
+
+            processed.forEach(i => {
+                const dt = new Date(i.created_at);
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
+                li.innerHTML = `
+                    <div>
+                        <p class="text-[9px] font-bold text-slate-500 uppercase">${dt.toLocaleTimeString('it-IT')} — ${dt.toLocaleDateString('it-IT')}</p>
+                        <p class="text-sm font-bold text-white uppercase">${i.nome}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">${i.quantita}</p>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[9px] font-black uppercase text-blue-400 italic">${i.delta ? 'Δ ' + formatDelta(i.delta) : 'Start'}</span>
+                        <button onclick="del('${i.id}')" class="mt-2 text-rose-500/50 text-[9px] font-bold uppercase p-2">Elimina</button>
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderGrouped(list, view) {
+            const groups = {};
+            rawData.forEach(i => {
+                const d = new Date(i.created_at);
+                const key = view === 'giorni' ? d.toLocaleDateString('it-IT') : d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                if (!groups[key]) groups[key] = { sig: 0, alc: 0, items: [] };
+                i.nome === "Sigaretta" ? groups[key].sig++ : groups[key].alc++;
+                groups[key].items.push(i);
+            });
+
+            const keys = Object.keys(groups);
+            keys.forEach((k, idx) => {
+                let trendHtml = "";
+                if (idx < keys.length - 1) {
+                    const prev = groups[keys[idx+1]];
+                    const curr = groups[k];
+                    const isBetter = curr.sig <= prev.sig && curr.alc <= prev.alc;
+                    const isWorse = curr.sig > prev.sig || curr.alc > prev.alc;
+                    const status = isBetter ? "Miglioramento" : (isWorse ? "Peggioramento" : "Stabile");
+                    const color = isBetter ? "text-emerald-500" : "text-rose-500";
+                    trendHtml = `<p class="text-[9px] font-bold ${color} uppercase mt-2">Report Jarvis: ${status}</p>`;
+                }
+
+                const li = document.createElement('li');
+                li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
+                li.innerHTML = `
+                    <p class="text-[10px] font-black text-blue-400 uppercase mb-2">${k}</p>
+                    <div class="flex justify-between text-sm font-bold text-white">
+                        <span>🚬 ${groups[k].sig} Unità</span>
+                        <span>🍷 ${groups[k].alc} Consumazioni</span>
+                    </div>
+                    ${trendHtml}`;
+                list.appendChild(li);
+            });
+        }
+
+        window.del = async (id) => { if(confirm("Conferma?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
         document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
         document.getElementById('btn-alcolico').onclick = async () => {
             const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
