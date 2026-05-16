@@ -3,6 +3,10 @@
     {
       "path": "/api/check-smoke",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/check-bac",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
