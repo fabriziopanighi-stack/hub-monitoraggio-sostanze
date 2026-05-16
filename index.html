@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Analytics v5.0</title>
+    <title>Executive Health Analytics v5.1</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -262,7 +262,12 @@
 
         function switchView(v) { currentView = v; document.querySelectorAll('[id^="tab-"]').forEach(t => { t.classList.remove('bg-blue-600', 'text-white'); t.classList.add('text-slate-500'); }); document.getElementById(`tab-${v}`).classList.add('bg-blue-600', 'text-white'); render(); }
 
-       // Connessione a Supabase
+        window.onload = () => {
+            document.getElementById('system-date').innerText = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+            const sel = document.getElementById('select-alcolico'); 
+            BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
+            
+            // Connessione a Supabase
             connect(); 
             
             // Registrazione Service Worker per modalità Standalone
@@ -277,15 +282,55 @@
             }
         };
 
-        // FUNZIONE PER PASSARE LE CHIAVI DI SICUREZZA AL DISPOSITIVO
+        // MODULO DI SOTTOSCRIZIONE PUSH REMOTA (VERSIONE COMPLETA)
         async function initPushNotification(reg) {
             if ('Notification' in window) {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    // Nota: Inseriremo la chiave pubblica VAPID nel prossimo step di sincronizzazione server
-                    console.log("Sistema di ricezione notifiche attivato sul dispositivo, Signore.");
+                    try {
+                        // Chiave pubblica VAPID (Identificatore sicuro per il server)
+                        const publicVapidKey = 'BEl62vCIptwST5_YOUR_PUBLIC_KEY_PLACEHOLDER_FOR_NOW'; 
+                        
+                        // Richiesta al browser di generare il canale Push tokenizzato
+                        let subscription = await reg.pushManager.getSubscription();
+                        if (!subscription) {
+                            subscription = await reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                            });
+                        }
+                        
+                        // Estrazione e conversione delle chiavi crittografiche del dispositivo
+                        const p256dh = b64encode(subscription.getKey('p256dh'));
+                        const auth = b64encode(subscription.getKey('auth'));
+                        
+                        // Invio e salvataggio dei dati sulla tabella Supabase
+                        await sb.from('pwa_subscriptions').upsert([{
+                            endpoint: subscription.endpoint,
+                            p256dh: p256dh,
+                            auth: auth
+                        }], { onConflict: 'endpoint' });
+
+                        console.log("Credenziali del dispositivo sincronizzate sul Cloud di Supabase, Signore.");
+                    } catch (error) {
+                        console.error("Errore durante la generazione del token Push:", error);
+                    }
                 }
             }
+        }
+
+        // FUNZIONI AUSILIARIE DI CONVERSIONE FORMATI
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+            return outputArray;
+        }
+        
+        function b64encode(buf) { 
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); 
         }
     </script>
 </body>
