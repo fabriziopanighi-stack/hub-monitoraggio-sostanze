@@ -262,11 +262,33 @@
 
         function switchView(v) { currentView = v; document.querySelectorAll('[id^="tab-"]').forEach(t => { t.classList.remove('bg-blue-600', 'text-white'); t.classList.add('text-slate-500'); }); document.getElementById(`tab-${v}`).classList.add('bg-blue-600', 'text-white'); render(); }
 
-        window.onload = () => {
-            document.getElementById('system-date').innerText = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-            const sel = document.getElementById('select-alcolico'); BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
-            connect(); if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+       // Connessione a Supabase
+            connect(); 
+            
+            // Registrazione Service Worker per modalità Standalone
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then((reg) => {
+                        console.log("Service Worker Registrato");
+                        // Attivazione richiesta permessi una volta che il worker è pronto
+                        initPushNotification(reg);
+                    })
+                    .catch(err => console.error("Errore Service Worker:", err));
+            }
         };
+
+        // FUNZIONE PER PASSARE LE CHIAVI DI SICUREZZA AL DISPOSITIVO
+        async function initPushNotification(reg) {
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // Nota: Inseriremo la chiave pubblica VAPID nel prossimo step di sincronizzazione server
+                    console.log("Sistema di ricezione notifiche attivato sul dispositivo, Signore.");
+                }
+            }
+        }
     </script>
+</body>
+</html>
 </body>
 </html>
