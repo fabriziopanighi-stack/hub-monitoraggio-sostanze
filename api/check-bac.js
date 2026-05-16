@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-const SUPABASE_URL = 'https://fyibnjnqrmgzeozxxsfx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 webpush.setVapidDetails(
     'mailto:assistente.jarvis.hub@gmail.com',
@@ -11,10 +11,13 @@ webpush.setVapidDetails(
 );
 
 export default async function handler(req, res) {
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        return res.status(500).json({ error: "Credenziali d'ambiente mancanti su Vercel." });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     try {
-        // 1. Estrazione delle consumazioni alcoliche nelle ultime 24 ore
         const unGiornoFa = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: consumazioni, error: errAlc } = await supabase
             .from('registrazioni')
@@ -30,7 +33,6 @@ export default async function handler(req, res) {
         const ultimoAlcolico = consumazioni[0];
         const oraAttuale = Date.now();
 
-        // Algoritmo di calcolo BAC v5.2 conforme al modulo client
         const calcolaBACaTempo = (targetTime) => {
             let totale = 0;
             consumazioni.forEach(item => {
@@ -55,12 +57,10 @@ export default async function handler(req, res) {
 
         const bacAttuale = calcolaBACaTempo(oraAttuale);
 
-        // Se il tasso è ancora superiore allo 0.5, il controllo si interrompe
         if (bacAttuale > 0.5) {
             return res.status(200).json({ status: `Tasso superiore al limite. BAC: ${bacAttuale.toFixed(2)} g/l` });
         }
 
-        // 2. Verifica anti-duplicazione per l'evento corrente
         const { data: inviate, error: errInv } = await supabase
             .from('notifiche_inviate')
             .select('*')
@@ -71,7 +71,6 @@ export default async function handler(req, res) {
             return res.status(200).json({ status: 'Notifica di rientro già inoltrata per questa sessione.' });
         }
 
-        // 3. Verifica se il tasso ha effettivamente superato la soglia critica durante il picco (45 min dopo il log)
         const tempoPicco = new Date(ultimoAlcolico.created_at).getTime() + 45 * 60 * 1000;
         const bacAlPicco = calcolaBACaTempo(tempoPicco);
 
@@ -79,7 +78,6 @@ export default async function handler(req, res) {
             return res.status(200).json({ status: 'Il picco teorico non ha mai superato lo 0.5 g/l. Allerta non necessaria.' });
         }
 
-        // 4. Inoltro del segnale push al dispositivo mobile
         const { data: abbonati, error: errSub } = await supabase
             .from('pwa_subscriptions')
             .select('*');
@@ -105,7 +103,6 @@ export default async function handler(req, res) {
             }
         }
 
-        // 5. Archiviazione ID log per prevenire cicli di invio infiniti
         await supabase
             .from('notifiche_inviate')
             .insert([{ registrazione_id: ultimoAlcolico.id }]);
