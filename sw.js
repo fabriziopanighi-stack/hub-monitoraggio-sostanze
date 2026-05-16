@@ -12,13 +12,12 @@ self.addEventListener('push', function(event) {
     }
     
     const options = {
-        body: payload.body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/2424/2424521.png',
-        badge: 'https://cdn-icons-png.flaticon.com/512/2424/2424521.png',
-        vibrate: [300, 100, 300],
-        data: { dateOfArrival: Date.now() }
-    };
-
+    body: payload.body,
+    icon: './icon.png',
+    badge: './icon.png',
+    vibrate: [300, 100, 300],
+    data: { dateOfArrival: Date.now() }
+};
     event.waitUntil(
         self.registration.showNotification(payload.title, options)
     );
