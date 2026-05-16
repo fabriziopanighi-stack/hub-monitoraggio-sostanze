@@ -1,0 +1,9 @@
+{
+  "name": "health-intelligence-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "web-push": "^3.6.7"
+  }
+}
