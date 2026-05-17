@@ -6,7 +6,7 @@ const ASSETS = [
     './manifest.json'
 ];
 
-// 1. Evento di installazione: memorizzazione degli asset fondamentali
+// 1. Installazione e memorizzazione degli asset locali
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -16,21 +16,25 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// 2. Evento di attivazione e pulizia delle vecchie cache
+// 2. Attivazione immediata del controllo dei client
 self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// 3. Intercettore di rete (FETCH): Requisito tassativo per lo stato di PWA
+// 3. INTERCETTORE SELETTIVO: Risolve il blocco della comunicazione con Supabase
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request);
-        })
-    );
+    // Il Service Worker deve gestire esclusivamente le richieste GET interne al proprio dominio.
+    // I metodi di scrittura (POST, DELETE) e le chiamate API esterne a Supabase devono viaggiare libere.
+    if (event.request.method === 'GET' && event.request.url.startsWith(self.location.origin)) {
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                return cachedResponse || fetch(event.request);
+            })
+        );
+    }
 });
 
-// 4. Ascoltatore dei segnali push remoti inviati da Supabase (Preservato)
+// 4. Ricezione dei segnali push remoti
 self.addEventListener('push', function(event) {
     let payload = { title: "Health Intelligence", body: "Soglia temporale superata, Signore." };
     
