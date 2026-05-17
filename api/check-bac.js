@@ -34,25 +34,37 @@ export default async function handler(req, res) {
         const oraAttuale = Date.now();
 
         const calcolaBACaTempo = (targetTime) => {
-            let totale = 0;
-            consumazioni.forEach(item => {
+            const logOrdinati = [...consumazioni].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
+            
+            let bacAttuale = 0;
+            let timeCursor = timeInizio;
+            const stepMs = 5 * 60 * 1000;
+            
+            const drinks = logOrdinati.map(item => {
                 const match = item.quantita.match(/(\d+\.\d+)g/);
-                if (match) {
-                    const g = parseFloat(match[1]);
-                    const ore = (targetTime - new Date(item.created_at).getTime()) / 3600000;
-                    if (ore >= 0) {
-                        const bacIniziale = g * 0.0154;
-                        let residuo = 0;
-                        if (ore <= 0.75) {
-                            residuo = (bacIniziale * (ore / 0.75)) - (ore * 0.15);
-                        } else {
-                            residuo = bacIniziale - (ore * 0.15);
-                        }
-                        totale += Math.max(0, residuo);
-                    }
-                }
+                const g = match ? parseFloat(match[1]) : 0;
+                return { time: new Date(item.created_at).getTime(), bacMax: g * 0.0245 };
             });
-            return totale;
+
+            while (timeCursor <= targetTime) {
+                let bacAggiuntoNelloStep = 0;
+                drinks.forEach(drink => {
+                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
+                        bacAggiuntoNelloStep += (drink.bacMax / 9);
+                    }
+                });
+                
+                bacAttuale += bacAggiuntoNelloStep;
+                
+                if (bacAttuale > 0) {
+                    bacAttuale -= (0.15 / 12);
+                    if (bacAttuale < 0) bacAttuale = 0;
+                }
+                
+                timeCursor += stepMs;
+            }
+            return bacAttuale;
         };
 
         const bacAttuale = calcolaBACaTempo(oraAttuale);
