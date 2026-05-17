@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Analytics v5.2</title>
+    <title>Executive Health Analytics v5.3</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -46,11 +46,20 @@
                     <span id="timer-alcolico" class="font-bold text-white">--:--</span>
                 </div>
             </div>
+            
             <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500 shadow-lg">
                 <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">BAC Cumulativo Dinamico</p>
                 <div class="flex justify-between text-[11px] mb-1">
-                    <span class="text-slate-400 uppercase">Tasso Stimato:</span>
+                    <span class="text-slate-400 uppercase">Tasso Attuale:</span>
                     <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
+                </div>
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-slate-400 uppercase">Picco Stimato:</span>
+                    <span id="bac-peak" class="font-bold text-amber-400">0.00 g/l</span>
+                </div>
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-slate-400 uppercase">Arrivo Picco:</span>
+                    <span id="bac-time-to-peak" class="font-bold text-slate-300">--</span>
                 </div>
                 <div class="flex justify-between text-[11px]">
                     <span class="text-slate-400 uppercase">Guida:</span>
@@ -202,40 +211,90 @@
         }
 
         function calculateCumulativeBAC(consumazioni) {
-            let bacTotale = 0; const ora = Date.now();
-            consumazioni.forEach(item => {
+            const ora = Date.now();
+            const unGiornoFa = ora - (24 * 60 * 60 * 1000);
+            
+            const consumazioniRecenti = consumazioni.filter(c => new Date(c.created_at).getTime() > unGiornoFa);
+
+            if (!consumazioniRecenti || consumazioniRecenti.length === 0) {
+                document.getElementById('bac-value').innerText = "0.00 g/l";
+                document.getElementById('bac-peak').innerText = "0.00 g/l";
+                document.getElementById('bac-time-to-peak').innerText = "--";
+                const waitEl = document.getElementById('bac-wait-time');
+                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
+                return;
+            }
+            
+            const logOrdinati = [...consumazioniRecenti].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
+            
+            let bacAttuale = 0;
+            let bacPiccoMassimo = 0;
+            let timePiccoMassimo = timeInizio;
+            
+            let timeCursor = timeInizio;
+            const stepMs = 5 * 60 * 1000;
+            const fineSimulazione = ora + (45 * 60 * 1000);
+            
+            let bacFluido = 0;
+            
+            const drinks = logOrdinati.map(item => {
                 const match = item.quantita.match(/(\d+\.\d+)g/);
-                if (match) {
-                    const g = parseFloat(match[1]); 
-                    const ore = (ora - new Date(item.created_at).getTime()) / 3600000;
-                    
-                    const bacIniziale = g * 0.0154; // Costante calibrata su 60kg
-                    let residuo = 0;
-                    
-                    if (ore <= 0.75) {
-                        // Fase 1: Assorbimento cinetico parabolico (Ramp-up nei primi 45 minuti)
-                        residuo = (bacIniziale * (ore / 0.75)) - (ore * CONFIG.PROFILE.burn_rate);
-                    } else {
-                        // Fase 2: Eliminazione metabolica lineare (Widmark decay dopo il picco)
-                        residuo = bacIniziale - (ore * CONFIG.PROFILE.burn_rate);
-                    }
-                    
-                    bacTotale += Math.max(0, residuo);
-                }
+                const g = match ? parseFloat(match[1]) : 0;
+                return {
+                    time: new Date(item.created_at).getTime(),
+                    bacMax: g * 0.0245
+                };
             });
-            document.getElementById('bac-value').innerText = `${bacTotale.toFixed(2)} g/l`;
+
+            while (timeCursor <= fineSimulazione) {
+                let bacAggiuntoNelloStep = 0;
+                
+                drinks.forEach(drink => {
+                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
+                        bacAggiuntoNelloStep += (drink.bacMax / 9);
+                    }
+                });
+                
+                bacFluido += bacAggiuntoNelloStep;
+                
+                if (bacFluido > 0) {
+                    bacFluido -= (CONFIG.PROFILE.burn_rate / 12); 
+                    if (bacFluido < 0) bacFluido = 0;
+                }
+                
+                if (timeCursor <= ora) {
+                    bacAttuale = bacFluido;
+                }
+                
+                if (bacFluido > bacPiccoMassimo) {
+                    bacPiccoMassimo = bacFluido;
+                    timePiccoMassimo = timeCursor;
+                }
+                
+                timeCursor += stepMs;
+            }
+
+            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
+            document.getElementById('bac-peak').innerText = `${bacPiccoMassimo.toFixed(2)} g/l`;
+            
+            const timeToPeakEl = document.getElementById('bac-time-to-peak');
+            if (timePiccoMassimo > ora) {
+                const minMancanti = Math.ceil((timePiccoMassimo - ora) / 60000);
+                timeToPeakEl.innerText = `~${minMancanti} min`;
+                timeToPeakEl.className = "font-bold text-amber-400 animate-pulse";
+            } else {
+                timeToPeakEl.innerText = "Raggiunto";
+                timeToPeakEl.className = "font-bold text-slate-500";
+            }
+
             const waitEl = document.getElementById('bac-wait-time');
-            if (bacTotale > CONFIG.PROFILE.limit_bac) {
-                const min = Math.ceil(((bacTotale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
                 waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
             } else {
-function calculateCumulativeBAC(consumazioni) {
-            if (!consumazioni || consumazioni.length === 0) {
-                document.getElementById('bac-value').innerText = "0.00 g/l";
-                const waitEl = document.getElementById('bac-wait-time');
-waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
-                return;
-}
+                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
+            }
         }
 
         function render() {
@@ -270,7 +329,7 @@ waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
             }
         }
 
-        window.del = async (id) => { if(confirm("Conferma?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
+        window.del = async (id) => { if(confirm("Conferma l'eliminazione?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
         document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
         document.getElementById('btn-alcolico').onclick = async () => {
             const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
@@ -286,11 +345,7 @@ waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
             BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
 
             connect(); 
-            const ora = Date.now();
-            // Ordina i log cronologicamente dal più vecchio al più recente
-            const logOrdinati = [...consumazioni].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
-
+            
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
                     .then((reg) => {
@@ -323,43 +378,13 @@ waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
                             p256dh: p256dh,
                             auth: auth
                         }], { onConflict: 'endpoint' });
-            let bacAttuale = 0;
-            let timeCursor = timeInizio;
-            const stepMs = 5 * 60 * 1000; // Simulazione in blocchi temporali di 5 minuti
-            
-            const drinks = logOrdinati.map(item => {
-                const match = item.quantita.match(/(\d+\.\d+)g/);
-                const g = match ? parseFloat(match[1]) : 0;
-                return {
-                    time: new Date(item.created_at).getTime(),
-                    bacMax: g * 0.0245 // Fattore Widmark esatto
-                };
-            });
-
+                        
                         console.log("Credenziali del dispositivo sincronizzate sul Cloud di Supabase, Signore.");
                     } catch (error) {
                         console.error("Errore durante la generazione del token Push:", error);
-            // Motore di scansione temporale
-            while (timeCursor <= ora) {
-                let bacAggiuntoNelloStep = 0;
-                
-                drinks.forEach(drink => {
-                    // Distribuisce il picco di assorbimento nei 45 minuti (9 step da 5 min)
-                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
-                        bacAggiuntoNelloStep += (drink.bacMax / 9);
-}
-                });
-                
-                bacAttuale += bacAggiuntoNelloStep;
-                
-                // Smaltimento epatico fisso: 0.15 g/l all'ora distribuito sui 5 minuti
-                if (bacAttuale > 0) {
-                    bacAttuale -= (CONFIG.PROFILE.burn_rate / 12); 
-                    if (bacAttuale < 0) bacAttuale = 0;
-}
-                
-                timeCursor += stepMs;
-}
+                    }
+                }
+            }
         }
 
         function urlBase64ToUint8Array(base64String) {
@@ -373,16 +398,7 @@ waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
         
         function b64encode(buf) { 
             return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); 
-            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
-            const waitEl = document.getElementById('bac-wait-time');
-            
-            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
-                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
-                waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
-            } else {
-                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
-            }
-}
+        }
     </script>
 </body>
 </html>
