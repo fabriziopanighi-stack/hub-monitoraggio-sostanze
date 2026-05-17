@@ -1,340 +1,58 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Health Analytics v5.2</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="HealthHub">
-    <link rel="apple-touch-icon" href="./icon.png">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(71, 85, 105, 0.3); }
-        .stat-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(51, 65, 85, 0.5); }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    </style>
-</head>
-<body class="text-slate-200 min-h-screen p-4 md:p-8 custom-scrollbar">
-    <div class="max-w-2xl mx-auto">
-        <header class="mb-6 flex justify-between items-start border-b border-slate-700 pb-6">
-            <div>
-                <h1 class="text-2xl font-black tracking-tighter text-white uppercase italic">Health <span class="text-blue-500">Intelligence</span></h1>
-                <p id="system-date" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1"></p>
-            </div>
-            <div id="status-cloud" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]"></div>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="stat-card p-4 rounded-xl border-l-2 border-emerald-500 shadow-lg">
-                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Timer Attività</p>
-                <div class="flex justify-between text-[11px] mb-1">
-                    <span class="text-slate-400 uppercase">Ultima Sigaretta:</span>
-                    <span id="timer-sigaretta" class="font-bold text-white">--:--</span>
-                </div>
-                <div class="flex justify-between text-[11px]">
-                    <span class="text-slate-400 uppercase">Ultimo Alcolico:</span>
-                    <span id="timer-alcolico" class="font-bold text-white">--:--</span>
-                </div>
-            </div>
-            <div class="stat-card p-4 rounded-xl border-l-2 border-amber-500 shadow-lg">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-2">BAC Cumulativo Dinamico</p>
-                <div class="flex justify-between text-[11px] mb-1">
-                    <span class="text-slate-400 uppercase">Tasso Stimato:</span>
-                    <span id="bac-value" class="font-bold text-white">0.00 g/l</span>
-                </div>
-                <div class="flex justify-between text-[11px]">
-                    <span class="text-slate-400 uppercase">Guida:</span>
-                    <span id="bac-wait-time" class="font-bold text-emerald-500">Idoneo</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="stat-card p-4 rounded-xl">
-                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Risparmio Settimanale</p>
-                <p id="saving-week" class="text-xl font-bold text-white">€ 0.00</p>
-            </div>
-            <div class="stat-card p-4 rounded-xl border-l-2 border-blue-500">
-                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Proiezione Annua</p>
-                <p id="saving-year" class="text-xl font-bold text-white">€ 0.00</p>
-            </div>
-            <div class="stat-card p-4 rounded-xl">
-                <p class="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Status Rigenerazione</p>
-                <div class="flex flex-col gap-2 mt-1">
-                    <p id="milestone-tobacco" class="text-[9px] font-medium text-rose-300 leading-tight italic">Tabacco: Analisi...</p>
-                    <p id="milestone-alcohol" class="text-[9px] font-medium text-blue-300 leading-tight italic">Alcol: Analisi...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <button id="btn-sigaretta" class="bg-gradient-to-br from-rose-700 to-rose-900 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-xs border border-rose-500/30">Log Sigaretta</button>
-            <div class="flex flex-col gap-2">
-                <select id="select-alcolico" class="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs outline-none text-slate-300"></select>
-                <button id="btn-alcolico" class="bg-gradient-to-br from-blue-700 to-blue-900 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all uppercase tracking-widest text-[10px] border border-blue-500/30">Log Alcolico</button>
-            </div>
-        </div>
-
-        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
-            <nav class="flex bg-slate-800/40 p-1">
-                <button onclick="switchView('live')" id="tab-live" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all bg-blue-600 text-white">Live Feed</button>
-                <button onclick="switchView('giorni')" id="tab-giorni" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Giorni</button>
-                <button onclick="switchView('mesi')" id="tab-mesi" class="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-lg text-slate-500">Mesi</button>
-            </nav>
-            <div class="p-5 max-h-[600px] overflow-y-auto custom-scrollbar">
-                <div id="loader" class="hidden text-center py-10"><div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div></div>
-                <ul id="log-lista" class="space-y-4"></ul>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const CONFIG = {
-            URL: 'https://fyibnjnqrmgzeozxxsfx.supabase.co',
-            KEY: 'sb_publishable_uh8m1jolttETPja2PACa4A_BghkyfoP',
-            BASELINE_SPESA: 124.50,
-            PROFILE: { peso: 60, burn_rate: 0.15, limit_bac: 0.5, nascita: new Date('1992-07-12') }
-        };
-
-        const BEVANDE = [
-            { id: "b1", n: "Birra Piccola", v: 200, a: 5.0, c: 3.5 },
-            { id: "b2", n: "Birra Bottiglia 33cl", v: 330, a: 5.0, c: 4.0 },
-            { id: "b3", n: "Birra Media", v: 400, a: 5.0, c: 5.0 },
-            { id: "b4", n: "Birra Bottiglia 66cl", v: 660, a: 5.0, c: 6.0 },
-            { id: "v1", n: "Vino Calice", v: 150, a: 12.0, c: 5.0 },
-            { id: "v2", n: "Vino Bottiglia", v: 750, a: 12.0, c: 18.0 },
-            { id: "a1", n: "Amaro / Digestivo", v: 60, a: 30.0, c: 4.0 },
-            { id: "s1", n: "Shot / Superalcolico", v: 40, a: 40.0, c: 4.0 },
-            { id: "c1", n: "Cocktail", v: 200, a: 15.0, c: 8.0 }
-        ];
-
-        let sb = null; let rawData = []; let currentView = 'live';
-
-        const CLINICAL_INSIGHTS = {
-            tobacco: [
-                { time: 0, text: "Assunzione: Vasocostrizione periferica istantanea." },
-                { time: 15, text: "CVS: Il CO si lega all'emoglobina; battito elevato." },
-                { time: 30, text: "Bronchi: Paralisi ciliare e blocco clearance muco." },
-                { time: 45, text: "Arterie: Inizio micro-infiammazioni endoteliali." },
-                { time: 60, text: "Metabolismo: Il fegato processa la nicotina; craving." },
-                { time: 120, text: "Saturazione: Il monossido occupa ancora l'8% dell'Hb." },
-                { time: 720, text: "Epurazione: Livelli di CO normalizzati nel sangue." }
-            ],
-            alcohol: [
-                { time: 0, text: "Assorbimento: Etanolo nel sangue; irritazione gastrica." },
-                { time: 20, text: "Glucidi: Alterazione glicemia e picco dopamina." },
-                { time: 45, text: "Tossicità: Conversione in acetaldeide ossidante." },
-                { time: 90, text: "Reni: Inibizione ormone antidiuretico; disidratazione." },
-                { time: 180, text: "Epatociti: Carico massimo delle cellule epatiche." },
-                { time: 720, text: "Neurologico: Alterazione fase REM e sistema GABA." },
-                { time: 1440, text: "Bio-equilibrio: Ripristino idratazione cerebrale." }
-            ]
-        };
-
-        function formatDelta(ms) {
-            const mins = Math.floor(ms / 60000); const hrs = Math.floor(mins / 60);
-            return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
-        }
-
-        function getClinicalInsight(type, ms) {
-            const mins = ms / 60000; const stages = CLINICAL_INSIGHTS[type];
-            let insight = "Analisi bioscansione...";
-            for (let stage of stages) { if (mins >= stage.time) insight = stage.text; else break; }
-            return insight;
-        }
-
-        async function connect() {
-            try {
-                sb = supabase.createClient(CONFIG.URL, CONFIG.KEY);
-                document.getElementById('status-cloud').classList.replace('bg-red-600', 'bg-emerald-500');
-                await refresh();
-            } catch (e) { console.error(e); }
-        }
-
-        async function refresh() {
-            const { data, error } = await sb.from('registrazioni').select('*').order('created_at', { ascending: false }).limit(400);
-            if (!error) { rawData = data; updateAnalytics(); updateBiometrics(); render(); }
-        }
-
-        function updateAnalytics() {
-            if (rawData.length === 0) return;
-            const ora = new Date();
-            const inizioSettimana = new Date(new Date().setDate(ora.getDate() - (ora.getDay() || 7) + 1)).setHours(0,0,0,0);
-            let spesaSettimanale = 0;
-            rawData.filter(i => new Date(i.created_at) >= inizioSettimana).forEach(i => {
-                if (i.nome === "Sigaretta") spesaSettimanale += 0.30;
-                else { const b = BEVANDE.find(x => x.n === i.nome); if (b) spesaSettimanale += b.c; }
-            });
-            const risparmioSett = Math.max(0, CONFIG.BASELINE_SPESA - spesaSettimanale);
-            document.getElementById('saving-week').innerText = `€ ${risparmioSett.toFixed(2)}`;
-            document.getElementById('saving-year').innerText = `€ ${(risparmioSett * 52.14).toFixed(2)}`;
-
-            const lastSig = rawData.find(i => i.nome === "Sigaretta");
-            const lastAlc = rawData.find(i => i.nome !== "Sigaretta");
-            if (lastSig) {
-                const d = Date.now() - new Date(lastSig.created_at).getTime();
-                document.getElementById('milestone-tobacco').innerText = `🚬 ${getClinicalInsight('tobacco', d)}`;
+function calculateCumulativeBAC(consumazioni) {
+            if (!consumazioni || consumazioni.length === 0) {
+                document.getElementById('bac-value').innerText = "0.00 g/l";
+                const waitEl = document.getElementById('bac-wait-time');
+                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
+                return;
             }
-            if (lastAlc) {
-                const d = Date.now() - new Date(lastAlc.created_at).getTime();
-                document.getElementById('milestone-alcohol').innerText = `🍷 ${getClinicalInsight('alcohol', d)}`;
-            }
-        }
-
-        function updateBiometrics() {
-            const lastSig = rawData.find(i => i.nome === "Sigaretta");
-            const allAlc = rawData.filter(i => i.nome !== "Sigaretta");
-            if (lastSig) document.getElementById('timer-sigaretta').innerText = formatDelta(Date.now() - new Date(lastSig.created_at).getTime());
-            if (allAlc.length > 0) {
-                document.getElementById('timer-alcolico').innerText = formatDelta(Date.now() - new Date(allAlc[0].created_at).getTime());
-                calculateCumulativeBAC(allAlc);
-            }
-        }
-
-        function calculateCumulativeBAC(consumazioni) {
-            let bacTotale = 0; const ora = Date.now();
-            consumazioni.forEach(item => {
+            
+            const ora = Date.now();
+            // Ordina i log cronologicamente dal più vecchio al più recente
+            const logOrdinati = [...consumazioni].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
+            
+            let bacAttuale = 0;
+            let timeCursor = timeInizio;
+            const stepMs = 5 * 60 * 1000; // Simulazione in blocchi temporali di 5 minuti
+            
+            const drinks = logOrdinati.map(item => {
                 const match = item.quantita.match(/(\d+\.\d+)g/);
-                if (match) {
-                    const g = parseFloat(match[1]); 
-                    const ore = (ora - new Date(item.created_at).getTime()) / 3600000;
-                    
-                    const bacIniziale = g * 0.0154; // Costante calibrata su 60kg
-                    let residuo = 0;
-                    
-                    if (ore <= 0.75) {
-                        // Fase 1: Assorbimento cinetico parabolico (Ramp-up nei primi 45 minuti)
-                        residuo = (bacIniziale * (ore / 0.75)) - (ore * CONFIG.PROFILE.burn_rate);
-                    } else {
-                        // Fase 2: Eliminazione metabolica lineare (Widmark decay dopo il picco)
-                        residuo = bacIniziale - (ore * CONFIG.PROFILE.burn_rate);
-                    }
-                    
-                    bacTotale += Math.max(0, residuo);
-                }
+                const g = match ? parseFloat(match[1]) : 0;
+                return {
+                    time: new Date(item.created_at).getTime(),
+                    bacMax: g * 0.0245 // Fattore Widmark esatto
+                };
             });
-            document.getElementById('bac-value').innerText = `${bacTotale.toFixed(2)} g/l`;
+
+            // Motore di scansione temporale
+            while (timeCursor <= ora) {
+                let bacAggiuntoNelloStep = 0;
+                
+                drinks.forEach(drink => {
+                    // Distribuisce il picco di assorbimento nei 45 minuti (9 step da 5 min)
+                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
+                        bacAggiuntoNelloStep += (drink.bacMax / 9);
+                    }
+                });
+                
+                bacAttuale += bacAggiuntoNelloStep;
+                
+                // Smaltimento epatico fisso: 0.15 g/l all'ora distribuito sui 5 minuti
+                if (bacAttuale > 0) {
+                    bacAttuale -= (CONFIG.PROFILE.burn_rate / 12); 
+                    if (bacAttuale < 0) bacAttuale = 0;
+                }
+                
+                timeCursor += stepMs;
+            }
+
+            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
             const waitEl = document.getElementById('bac-wait-time');
-            if (bacTotale > CONFIG.PROFILE.limit_bac) {
-                const min = Math.ceil(((bacTotale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+            
+            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
                 waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
             } else {
                 waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
             }
         }
-
-        function render() {
-            const list = document.getElementById('log-lista'); list.innerHTML = '';
-            if (currentView === 'live') {
-                const cats = { 'Sigaretta': null, 'Alcohol': null };
-                const processed = [...rawData].reverse().map(item => {
-                    const key = item.nome !== "Sigaretta" ? 'Alcohol' : 'Sigaretta';
-                    const ts = new Date(item.created_at).getTime();
-                    const delta = cats[key] ? ts - cats[key] : null; cats[key] = ts;
-                    return { ...item, delta };
-                }).reverse();
-                processed.forEach(i => {
-                    const li = document.createElement('li'); li.className = "flex justify-between items-center bg-slate-800/30 p-4 rounded-xl border border-slate-700/50";
-                    li.innerHTML = `<div><p class="text-[9px] text-slate-500 uppercase">${new Date(i.created_at).toLocaleTimeString('it-IT')}</p><p class="text-sm font-bold text-white">${i.nome}</p></div>
-                        <div class="flex flex-col items-end"><span class="text-[9px] uppercase text-blue-400 italic">${i.delta ? 'Δ ' + formatDelta(i.delta) : 'Start'}</span><button onclick="del('${i.id}')" class="text-rose-500/50 text-[9px] p-2">Elimina</button></div>`;
-                    list.appendChild(li);
-                });
-            } else {
-                const groups = {};
-                rawData.forEach(i => {
-                    const d = new Date(i.created_at); const key = currentView === 'giorni' ? d.toLocaleDateString('it-IT') : d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-                    if (!groups[key]) groups[key] = { sig: 0, alc: 0 }; i.nome === "Sigaretta" ? groups[key].sig++ : groups[key].alc++;
-                });
-                Object.keys(groups).forEach((k, idx, arr) => {
-                    let trend = ""; if (idx < arr.length - 1) { const prev = groups[arr[idx+1]]; const better = groups[k].sig <= prev.sig && groups[k].alc <= prev.alc;
-                    trend = `<p class="text-[9px] font-bold ${better ? 'text-emerald-500' : 'text-rose-500'} uppercase mt-2">Jarvis: ${better ? 'Miglioramento' : 'Peggioramento'}</p>`; }
-                    const li = document.createElement('li'); li.className = "p-4 bg-slate-800/50 rounded-xl border-l-2 border-blue-500";
-                    li.innerHTML = `<p class="text-[10px] text-blue-400 uppercase mb-2">${k}</p><div class="flex justify-between text-sm text-white"><span>🚬 ${groups[k].sig}</span><span>🍷 ${groups[k].alc}</span></div>${trend}`;
-                    list.appendChild(li);
-                });
-            }
-        }
-
-        window.del = async (id) => { if(confirm("Conferma?")) { await sb.from('registrazioni').delete().eq('id', id); await refresh(); } };
-        document.getElementById('btn-sigaretta').onclick = async () => { await sb.from('registrazioni').insert([{ nome: "Sigaretta", quantita: "1 unità" }]); await refresh(); };
-        document.getElementById('btn-alcolico').onclick = async () => {
-            const b = BEVANDE.find(x => x.id === document.getElementById('select-alcolico').value);
-            const g = (b.v * (b.a / 100) * 0.789).toFixed(2);
-            await sb.from('registrazioni').insert([{ nome: b.n, quantita: `${b.v}ml | ${b.a}% | ${g}g` }]); await refresh();
-        };
-
-        function switchView(v) { currentView = v; document.querySelectorAll('[id^="tab-"]').forEach(t => { t.classList.remove('bg-blue-600', 'text-white'); t.classList.add('text-slate-500'); }); document.getElementById(`tab-${v}`).classList.add('bg-blue-600', 'text-white'); render(); }
-
-        window.onload = () => {
-            document.getElementById('system-date').innerText = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-            const sel = document.getElementById('select-alcolico'); 
-            BEVANDE.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = `${b.n} (${b.v}ml)`; sel.appendChild(opt); });
-            
-            connect(); 
-            
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js')
-                    .then((reg) => {
-                        console.log("Service Worker Registrato");
-                        initPushNotification(reg);
-                    })
-                    .catch(err => console.error("Errore Service Worker:", err));
-            }
-        };
-
-        async function initPushNotification(reg) {
-            if ('Notification' in window) {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    try {
-                        const publicVapidKey = 'BFrqrPLeS6oS3E6DthusfrfUw_Tv31rBBDuGwWFf9bokGNFZm8xv-jMgPNUjaNwMDUSA2cIEpC6E8jYuQ137nVo'; 
-                        let subscription = await reg.pushManager.getSubscription();
-                        if (!subscription) {
-                            subscription = await reg.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-                            });
-                        }
-                        
-                        const p256dh = b64encode(subscription.getKey('p256dh'));
-                        const auth = b64encode(subscription.getKey('auth'));
-                        
-                        await sb.from('pwa_subscriptions').upsert([{
-                            endpoint: subscription.endpoint,
-                            p256dh: p256dh,
-                            auth: auth
-                        }], { onConflict: 'endpoint' });
-
-                        console.log("Credenziali del dispositivo sincronizzate sul Cloud di Supabase, Signore.");
-                    } catch (error) {
-                        console.error("Errore durante la generazione del token Push:", error);
-                    }
-                }
-            }
-        }
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
-            return outputArray;
-        }
-        
-        function b64encode(buf) { 
-            return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); 
-        }
-    </script>
-</body>
-</html>
