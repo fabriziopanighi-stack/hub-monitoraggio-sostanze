@@ -32,6 +32,7 @@ export default async function handler(req, res) {
 
         const ultimoAlcolico = consumazioni[0];
         const oraAttuale = Date.now();
+        const tempoPicco = new Date(ultimoAlcolico.created_at).getTime() + 45 * 60 * 1000;
 
         const calcolaBACaTempo = (targetTime) => {
             const logOrdinati = [...consumazioni].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -69,10 +70,23 @@ export default async function handler(req, res) {
 
         const bacAttuale = calcolaBACaTempo(oraAttuale);
 
+        // 1. BLOCCO ASSORBIMENTO: Se siamo prima del picco, l'alcol sta ancora salendo. Interrompi l'esecuzione.
+        if (oraAttuale < tempoPicco) {
+            return res.status(200).json({ status: 'Fase di assorbimento in corso. Curva in salita.' });
+        }
+
+        // 2. BLOCCO LIMITE: Se dopo il picco siamo ancora sopra lo 0.5, interrompi.
         if (bacAttuale > 0.5) {
             return res.status(200).json({ status: `Tasso superiore al limite. BAC: ${bacAttuale.toFixed(2)} g/l` });
         }
 
+        // 3. VERIFICA PICCO TEORICO: Controlla se il picco aveva effettivamente superato lo 0.5 per giustificare una notifica.
+        const bacAlPicco = calcolaBACaTempo(tempoPicco);
+        if (bacAlPicco <= 0.5) {
+            return res.status(200).json({ status: 'Il picco non ha mai superato lo 0.5 g/l. Allerta non necessaria.' });
+        }
+
+        // 4. VERIFICA DUPLICATI:
         const { data: inviate, error: errInv } = await supabase
             .from('notifiche_inviate')
             .select('*')
@@ -83,43 +97,31 @@ export default async function handler(req, res) {
             return res.status(200).json({ status: 'Notifica di rientro già inoltrata per questa sessione.' });
         }
 
-        const tempoPicco = new Date(ultimoAlcolico.created_at).getTime() + 45 * 60 * 1000;
-        const bacAlPicco = calcolaBACaTempo(tempoPicco);
-
-        if (bacAlPicco <= 0.5) {
-            return res.status(200).json({ status: 'Il picco teorico non ha mai superato lo 0.5 g/l. Allerta non necessaria.' });
-        }
-
         const { data: abbonati, error: errSub } = await supabase
             .from('pwa_subscriptions')
             .select('*');
 
-        if (errSub || !abbonati || abbonati.length === 0) {
-            return res.status(200).json({ status: 'Nessun dispositivo registrato per la ricezione.' });
-        }
+        if (!errSub && abbonati && abbonati.length > 0) {
+            const payload = JSON.stringify({
+                title: 'Health Intelligence',
+                body: `Signore, il Suo tasso alcolemico stimato è sceso a ${bacAttuale.toFixed(2)} g/l. Stato idoneo alla guida autorizzato.`
+            });
 
-        const payload = JSON.stringify({
-            title: 'Health Intelligence',
-            body: `Signore, il Suo tasso alcolemico stimato è rientrato a ${bacAttuale.toFixed(2)} g/l. Stato idoneo alla guida autorizzato.`
-        });
-
-        for (const sub of abbonati) {
-            const pushSubscription = {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh, auth: sub.auth }
-            };
-            try {
-                await webpush.sendNotification(pushSubscription, payload);
-            } catch (pushErr) {
-                console.error("Latenza endpoint:", pushErr.message);
+            for (const sub of abbonati) {
+                const pushSubscription = {
+                    endpoint: sub.endpoint,
+                    keys: { p256dh: sub.p256dh, auth: sub.auth }
+                };
+                try {
+                    await webpush.sendNotification(pushSubscription, payload);
+                } catch (pushErr) {
+                    console.error("Latenza endpoint:", pushErr.message);
+                }
             }
         }
 
-        await supabase
-            .from('notifiche_inviate')
-            .insert([{ registrazione_id: ultimoAlcolico.id }]);
-
-        return res.status(200).json({ status: 'Protocollo di rientro eseguito. Notifica inoltrata.' });
+        await supabase.from('notifiche_inviate').insert([{ registrazione_id: ultimoAlcolico.id }]);
+        return res.status(200).json({ status: 'Protocollo di rientro eseguito.' });
 
     } catch (globalError) {
         return res.status(500).json({ error: globalError.message });
