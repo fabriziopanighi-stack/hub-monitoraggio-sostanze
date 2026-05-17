@@ -1,10 +1,62 @@
 function calculateCumulativeBAC(consumazioni) {
-            if (!consumazioni || consumazioni.length === 0) {
+            const ora = Date.now();
+            const unGiornoFa = ora - (24 * 60 * 60 * 1000);
+            
+            // Filtra solo le consumazioni delle ultime 24 ore per evitare l'accumulo di scarti matematici
+            const consumazioniRecenti = consumazioni.filter(c => new Date(c.created_at).getTime() > unGiornoFa);
+
+            if (!consumazioniRecenti || consumazioniRecenti.length === 0) {
                 document.getElementById('bac-value').innerText = "0.00 g/l";
                 const waitEl = document.getElementById('bac-wait-time');
                 waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
                 return;
             }
+            
+            const logOrdinati = [...consumazioniRecenti].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
+            
+            let bacAttuale = 0;
+            let timeCursor = timeInizio;
+            const stepMs = 5 * 60 * 1000;
+            
+            const drinks = logOrdinati.map(item => {
+                const match = item.quantita.match(/(\d+\.\d+)g/);
+                const g = match ? parseFloat(match[1]) : 0;
+                return {
+                    time: new Date(item.created_at).getTime(),
+                    bacMax: g * 0.0245
+                };
+            });
+
+            while (timeCursor <= ora) {
+                let bacAggiuntoNelloStep = 0;
+                
+                drinks.forEach(drink => {
+                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
+                        bacAggiuntoNelloStep += (drink.bacMax / 9);
+                    }
+                });
+                
+                bacAttuale += bacAggiuntoNelloStep;
+                
+                if (bacAttuale > 0) {
+                    bacAttuale -= (CONFIG.PROFILE.burn_rate / 12); 
+                    if (bacAttuale < 0) bacAttuale = 0;
+                }
+                
+                timeCursor += stepMs;
+            }
+
+            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
+            const waitEl = document.getElementById('bac-wait-time');
+            
+            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+                waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
+            } else {
+                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
+            }
+        }
             
             const ora = Date.now();
             // Ordina i log cronologicamente dal più vecchio al più recente
