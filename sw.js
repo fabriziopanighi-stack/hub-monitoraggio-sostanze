@@ -1,4 +1,4 @@
-const CACHE_NAME = 'health-intelligence-v5.2';
+const CACHE_NAME = 'health-intelligence-v5.3';
 const ASSETS = [
     './',
     './index.html',
@@ -6,7 +6,7 @@ const ASSETS = [
     './manifest.json'
 ];
 
-// 1. Installazione e memorizzazione degli asset locali
+// 1. Installazione e memorizzazione
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -16,27 +16,35 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// 2. Attivazione immediata del controllo dei client
+// 2. Attivazione e PURGA DELLE VECCHIE CACHE
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName); // Distrugge le versioni 5.2 e precedenti
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
 });
 
-// 3. INTERCETTORE SELETTIVO: Risolve il blocco della comunicazione con Supabase
+// 3. INTERCETTORE NETWORK-FIRST: Scarica sempre dal server se c'è linea
 self.addEventListener('fetch', (event) => {
-    // Il Service Worker deve gestire esclusivamente le richieste GET interne al proprio dominio.
-    // I metodi di scrittura (POST, DELETE) e le chiamate API esterne a Supabase devono viaggiare libere.
     if (event.request.method === 'GET' && event.request.url.startsWith(self.location.origin)) {
         event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                return cachedResponse || fetch(event.request);
+            fetch(event.request).catch(() => {
+                return caches.match(event.request);
             })
         );
     }
 });
 
-// 4. Ricezione dei segnali push remoti
+// 4. Ricezione dei segnali push remoti (Invariato)
 self.addEventListener('push', function(event) {
-    let payload = { title: "Health Intelligence", body: "Soglia temporale superata, Signore." };
+    let payload = { title: "Health Intelligence", body: "Soglia temporale superata." };
     
     if (event.data) {
         try {
