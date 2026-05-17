@@ -2,70 +2,32 @@ function calculateCumulativeBAC(consumazioni) {
             const ora = Date.now();
             const unGiornoFa = ora - (24 * 60 * 60 * 1000);
             
-            // Filtra solo le consumazioni delle ultime 24 ore per evitare l'accumulo di scarti matematici
+            // 1. Isolamento dei log delle ultime 24 ore per evitare derive matematiche
             const consumazioniRecenti = consumazioni.filter(c => new Date(c.created_at).getTime() > unGiornoFa);
 
             if (!consumazioniRecenti || consumazioniRecenti.length === 0) {
                 document.getElementById('bac-value').innerText = "0.00 g/l";
+                document.getElementById('bac-peak').innerText = "0.00 g/l";
+                document.getElementById('bac-time-to-peak').innerText = "--";
                 const waitEl = document.getElementById('bac-wait-time');
                 waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
                 return;
             }
             
+            // 2. Ordinamento cronologico
             const logOrdinati = [...consumazioniRecenti].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
             const timeInizio = new Date(logOrdinati[0].created_at).getTime();
             
+            // 3. Inizializzazione variabili di simulazione
             let bacAttuale = 0;
-            let timeCursor = timeInizio;
-            const stepMs = 5 * 60 * 1000;
+            let bacPiccoMassimo = 0;
+            let timePiccoMassimo = timeInizio;
             
-            const drinks = logOrdinati.map(item => {
-                const match = item.quantita.match(/(\d+\.\d+)g/);
-                const g = match ? parseFloat(match[1]) : 0;
-                return {
-                    time: new Date(item.created_at).getTime(),
-                    bacMax: g * 0.0245
-                };
-            });
-
-            while (timeCursor <= ora) {
-                let bacAggiuntoNelloStep = 0;
-                
-                drinks.forEach(drink => {
-                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
-                        bacAggiuntoNelloStep += (drink.bacMax / 9);
-                    }
-                });
-                
-                bacAttuale += bacAggiuntoNelloStep;
-                
-                if (bacAttuale > 0) {
-                    bacAttuale -= (CONFIG.PROFILE.burn_rate / 12); 
-                    if (bacAttuale < 0) bacAttuale = 0;
-                }
-                
-                timeCursor += stepMs;
-            }
-
-            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
-            const waitEl = document.getElementById('bac-wait-time');
-            
-            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
-                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
-                waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
-            } else {
-                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
-            }
-        }
-            
-            const ora = Date.now();
-            // Ordina i log cronologicamente dal più vecchio al più recente
-            const logOrdinati = [...consumazioni].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
-            
-            let bacAttuale = 0;
             let timeCursor = timeInizio;
             const stepMs = 5 * 60 * 1000; // Simulazione in blocchi temporali di 5 minuti
+            const fineSimulazione = ora + (45 * 60 * 1000); // Proiezione estesa a +45 minuti nel futuro
+            
+            let bacFluido = 0;
             
             const drinks = logOrdinati.map(item => {
                 const match = item.quantita.match(/(\d+\.\d+)g/);
@@ -76,8 +38,8 @@ function calculateCumulativeBAC(consumazioni) {
                 };
             });
 
-            // Motore di scansione temporale
-            while (timeCursor <= ora) {
+            // 4. Motore di scansione temporale
+            while (timeCursor <= fineSimulazione) {
                 let bacAggiuntoNelloStep = 0;
                 
                 drinks.forEach(drink => {
@@ -87,20 +49,43 @@ function calculateCumulativeBAC(consumazioni) {
                     }
                 });
                 
-                bacAttuale += bacAggiuntoNelloStep;
+                bacFluido += bacAggiuntoNelloStep;
                 
                 // Smaltimento epatico fisso: 0.15 g/l all'ora distribuito sui 5 minuti
-                if (bacAttuale > 0) {
-                    bacAttuale -= (CONFIG.PROFILE.burn_rate / 12); 
-                    if (bacAttuale < 0) bacAttuale = 0;
+                if (bacFluido > 0) {
+                    bacFluido -= (CONFIG.PROFILE.burn_rate / 12); 
+                    if (bacFluido < 0) bacFluido = 0;
+                }
+                
+                // Memorizza lo stato biochimico all'istante reale corrente
+                if (timeCursor <= ora) {
+                    bacAttuale = bacFluido;
+                }
+                
+                // Rileva e isola il picco massimo assoluto generato dalla sessione
+                if (bacFluido > bacPiccoMassimo) {
+                    bacPiccoMassimo = bacFluido;
+                    timePiccoMassimo = timeCursor;
                 }
                 
                 timeCursor += stepMs;
             }
 
+            // 5. Rendering dei dati analitici aggiornati
             document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
-            const waitEl = document.getElementById('bac-wait-time');
+            document.getElementById('bac-peak').innerText = `${bacPiccoMassimo.toFixed(2)} g/l`;
             
+            const timeToPeakEl = document.getElementById('bac-time-to-peak');
+            if (timePiccoMassimo > ora) {
+                const minMancanti = Math.ceil((timePiccoMassimo - ora) / 60000);
+                timeToPeakEl.innerText = `~${minMancanti} min`;
+                timeToPeakEl.className = "font-bold text-amber-400 animate-pulse";
+            } else {
+                timeToPeakEl.innerText = "Raggiunto";
+                timeToPeakEl.className = "font-bold text-slate-500";
+            }
+
+            const waitEl = document.getElementById('bac-wait-time');
             if (bacAttuale > CONFIG.PROFILE.limit_bac) {
                 const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
                 waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
