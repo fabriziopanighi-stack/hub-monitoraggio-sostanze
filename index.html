@@ -230,6 +230,83 @@
             
             let bacAttuale = 0;
             let bacPiccoMassimo = 0;
+            let timePiccoMassimo = ora; 
+            
+            let timeCursor = timeInizio;
+            const stepMs = 5 * 60 * 1000;
+            const fineSimulazione = ora + (45 * 60 * 1000);
+            
+            let bacFluido = 0;
+            
+            const drinks = logOrdinati.map(item => {
+                const match = item.quantita.match(/(\d+\.\d+)g/);
+                const g = match ? parseFloat(match[1]) : 0;
+                return {
+                    time: new Date(item.created_at).getTime(),
+                    bacMax: g * 0.0245
+                };
+            });
+
+            // Motore di scansione temporale
+            while (timeCursor <= fineSimulazione) {
+                let bacAggiuntoNelloStep = 0;
+                
+                drinks.forEach(drink => {
+                    if (timeCursor > drink.time && timeCursor <= drink.time + (45 * 60 * 1000)) {
+                        bacAggiuntoNelloStep += (drink.bacMax / 9);
+                    }
+                });
+                
+                bacFluido += bacAggiuntoNelloStep;
+                
+                if (bacFluido > 0) {
+                    bacFluido -= (CONFIG.PROFILE.burn_rate / 12); 
+                    if (bacFluido < 0) bacFluido = 0;
+                }
+                
+                if (timeCursor <= ora) {
+                    // Nel passato e fino al presente, ancoriamo il picco al tasso attuale
+                    bacAttuale = bacFluido;
+                    bacPiccoMassimo = bacFluido;
+                    timePiccoMassimo = ora;
+                } else {
+                    // Nel futuro, aggiorniamo il picco solo se la curva continua a salire
+                    if (bacFluido > bacPiccoMassimo) {
+                        bacPiccoMassimo = bacFluido;
+                        timePiccoMassimo = timeCursor;
+                    }
+                }
+                
+                timeCursor += stepMs;
+            }
+
+            document.getElementById('bac-value').innerText = `${bacAttuale.toFixed(2)} g/l`;
+            document.getElementById('bac-peak').innerText = `${bacPiccoMassimo.toFixed(2)} g/l`;
+            
+            const timeToPeakEl = document.getElementById('bac-time-to-peak');
+            if (timePiccoMassimo > ora) {
+                const minMancanti = Math.ceil((timePiccoMassimo - ora) / 60000);
+                timeToPeakEl.innerText = `~${minMancanti} min`;
+                timeToPeakEl.className = "font-bold text-amber-400 animate-pulse";
+            } else {
+                timeToPeakEl.innerText = "Raggiunto";
+                timeToPeakEl.className = "font-bold text-slate-500";
+            }
+
+            const waitEl = document.getElementById('bac-wait-time');
+            if (bacAttuale > CONFIG.PROFILE.limit_bac) {
+                const min = Math.ceil(((bacAttuale - CONFIG.PROFILE.limit_bac) / CONFIG.PROFILE.burn_rate) * 60);
+                waitEl.innerText = `Alt: ${min}m`; waitEl.className = "font-bold text-rose-500 animate-pulse";
+            } else {
+                waitEl.innerText = "Idoneo"; waitEl.className = "font-bold text-emerald-500";
+            }
+        }
+            
+            const logOrdinati = [...consumazioniRecenti].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const timeInizio = new Date(logOrdinati[0].created_at).getTime();
+            
+            let bacAttuale = 0;
+            let bacPiccoMassimo = 0;
             let timePiccoMassimo = timeInizio;
             
             let timeCursor = timeInizio;
